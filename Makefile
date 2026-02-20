@@ -45,6 +45,9 @@ TASK_OBJ    := $(BUILD_DIR)/ne_task.obj
 MEM_SRC     := $(SRC_DIR)/ne_mem.c
 MEM_OBJ     := $(BUILD_DIR)/ne_mem.obj
 
+TRAP_SRC    := $(SRC_DIR)/ne_trap.c
+TRAP_OBJ    := $(BUILD_DIR)/ne_trap.obj
+
 TEST_SRC         := $(TEST_DIR)/test_ne_parser.c
 TEST_OBJ         := $(BUILD_DIR)/test_ne_parser.obj
 TEST_BIN         := $(BUILD_DIR)/test_ne_parser.exe
@@ -69,9 +72,13 @@ TASK_TEST_SRC    := $(TEST_DIR)/test_ne_task.c
 TASK_TEST_OBJ    := $(BUILD_DIR)/test_ne_task.obj
 TASK_TEST_BIN    := $(BUILD_DIR)/test_ne_task.exe
 
+TRAP_TEST_SRC    := $(TEST_DIR)/test_ne_trap.c
+TRAP_TEST_OBJ    := $(BUILD_DIR)/test_ne_trap.obj
+TRAP_TEST_BIN    := $(BUILD_DIR)/test_ne_trap.exe
+
 .PHONY: all test clean
 
-all: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN)
+all: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN)
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
@@ -97,6 +104,9 @@ $(TASK_OBJ): $(TASK_SRC) $(SRC_DIR)/ne_task.h | $(BUILD_DIR)
 $(MEM_OBJ): $(MEM_SRC) $(SRC_DIR)/ne_mem.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
+$(TRAP_OBJ): $(TRAP_SRC) $(SRC_DIR)/ne_trap.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -fo=$@ $<
+
 $(TEST_OBJ): $(TEST_SRC) $(SRC_DIR)/ne_parser.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
@@ -113,6 +123,9 @@ $(IMPEXP_TEST_OBJ): $(IMPEXP_TEST_SRC) $(SRC_DIR)/ne_impexp.h $(SRC_DIR)/ne_pars
 	$(CC) $(CFLAGS) -fo=$@ $<
 
 $(TASK_TEST_OBJ): $(TASK_TEST_SRC) $(SRC_DIR)/ne_task.h $(SRC_DIR)/ne_mem.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -fo=$@ $<
+
+$(TRAP_TEST_OBJ): $(TRAP_TEST_SRC) $(SRC_DIR)/ne_trap.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
 $(TEST_BIN): $(TEST_OBJ) $(PARSER_OBJ) | $(BUILD_DIR)
@@ -133,7 +146,10 @@ $(IMPEXP_TEST_BIN): $(IMPEXP_TEST_OBJ) $(PARSER_OBJ) $(IMPEXP_OBJ) | $(BUILD_DIR
 $(TASK_TEST_BIN): $(TASK_TEST_OBJ) $(TASK_OBJ) $(MEM_OBJ) | $(BUILD_DIR)
 	$(LD) $(LDFLAGS) name $@ file $(TASK_TEST_OBJ),$(TASK_OBJ),$(MEM_OBJ)
 
-test: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN)
+$(TRAP_TEST_BIN): $(TRAP_TEST_OBJ) $(TRAP_OBJ) | $(BUILD_DIR)
+	$(LD) $(LDFLAGS) name $@ file $(TRAP_TEST_OBJ),$(TRAP_OBJ)
+
+test: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN)
 	@echo "--- Running NE parser tests ---"
 	$(TEST_BIN)
 	@echo "--- Running NE loader tests ---"
@@ -146,6 +162,8 @@ test: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPE
 	$(IMPEXP_TEST_BIN)
 	@echo "--- Running NE task and memory management tests ---"
 	$(TASK_TEST_BIN)
+	@echo "--- Running NE exception and trap handling tests ---"
+	$(TRAP_TEST_BIN)
 
 clean:
 	rm -rf $(BUILD_DIR)
