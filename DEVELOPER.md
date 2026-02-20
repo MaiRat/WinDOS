@@ -44,18 +44,24 @@ src/
 ├── ne_compat.c / .h      # Compatibility testing and hardening     [IN SCOPE]
 ├── ne_release.c / .h     # Release readiness validation            [IN SCOPE]
 ├── ne_dpmi.c / .h        # DPMI protected-mode support             [IN SCOPE]
-├── ne_user.c / .h        # USER.EXE subsystem interface            [PRESERVED]
-├── ne_gdi.c / .h         # GDI.EXE subsystem interface             [PRESERVED]
-├── ne_driver.c / .h      # Device drivers (kbd, timer, disp, mouse)[PRESERVED]
+├── ne_driver.c / .h      # Device drivers (kbd, timer, disp, mouse)[IN SCOPE – kernel dependency]
 └── ne_dosalloc.h         # Portable memory allocation macros       [IN SCOPE]
+
+archive/future/
+├── src/
+│   ├── ne_user.c / .h    # USER.EXE subsystem interface            [PRESERVED]
+│   └── ne_gdi.c / .h     # GDI.EXE subsystem interface             [PRESERVED]
+└── tests/
+    ├── test_ne_user.c     # USER.EXE unit tests                     [PRESERVED]
+    └── test_ne_gdi.c      # GDI.EXE unit tests                      [PRESERVED]
 ```
 
 > **[IN SCOPE]** modules are actively developed as part of the
 > `krnl386.exe` replacement.
 >
-> **[PRESERVED]** modules contain GDI, USER, and driver code that is
-> kept for potential future replacement work.  Do not delete these
-> files.
+> **[PRESERVED]** modules contain GDI and USER code that has been moved
+> to `archive/future/` for potential future replacement work.  See
+> `archive/future/README.md` for instructions on restoring them.
 
 ### Dual-Target Build
 
@@ -85,14 +91,14 @@ on the `__WATCOMC__` preprocessor symbol.
              ne_module ◄── ne_impexp
                   │
                   ▼
-             ne_kernel ──► ne_user / ne_gdi
+             ne_kernel ──► ne_driver (kbd, timer, display, mouse)
                   │
                   ▼
              ne_task ──► ne_mem ──► ne_trap
-                  │
-                  ▼
-             ne_driver (keyboard, timer, display, mouse)
 ```
+
+> USER.EXE (`ne_user`) and GDI.EXE (`ne_gdi`) code has been moved to
+> `archive/future/` and is not part of the active build.
 
 ## Build System
 
@@ -101,6 +107,7 @@ on the `__WATCOMC__` preprocessor symbol.
 | Target       | Description                                        |
 |-------------|----------------------------------------------------|
 | `all`        | Build all object files and test binaries (Watcom)  |
+| `krnl386`    | Build the `krnl386.exe` NE-executable (Watcom)     |
 | `test`       | Build and run all tests (Watcom / DOS)             |
 | `host-test`  | Build and run all tests with host C compiler       |
 | `clean`      | Remove all build artefacts                         |
@@ -111,6 +118,9 @@ on the `__WATCOMC__` preprocessor symbol.
 ```bash
 # Full Watcom build:
 make all
+
+# Build krnl386.exe NE-executable:
+make krnl386
 
 # Host (CI) tests:
 make host-test
@@ -279,8 +289,10 @@ The project roadmap is maintained in two documents:
 - **[ReadME.md](ReadME.md)** – Original 9-step implementation plan
   and project scope declaration.
 - **[ROADMAP.md](ROADMAP.md)** – Extended roadmap covering Phases 1–7
-  (DOS bring-up through release readiness), with GDI/USER/driver
-  phases marked as preserved for future work.
+  (DOS bring-up through release readiness), with GDI/USER phases
+  marked as preserved for future work.
+- **[NE_STUB.md](NE_STUB.md)** – NE-executable format overview and
+  DOS stub loader design document.
 
 ## License
 
