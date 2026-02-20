@@ -110,6 +110,10 @@ This roadmap breaks the work into small milestones to implement a full Windows 3
 
 For a detailed assessment of gaps, missing functionalities, and the phased plan to achieve full Windows 3.1 kernel replacement status, see **[ROADMAP.md](ROADMAP.md)**.
 
+A full kernel replacement status review has been performed.  See
+**[KERNEL_ASSESSMENT.md](KERNEL_ASSESSMENT.md)** for the gap analysis
+and final roadmap of missing steps.
+
 ### Tracking and execution notes
 - Create dedicated sub-issues per step for:
   - Implementation tasks
