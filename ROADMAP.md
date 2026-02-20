@@ -120,3 +120,17 @@ Final validation, documentation, and release packaging.
 | 5 | Dynamic segment & resource management | Phase 2 |
 | 6 | Compatibility testing and hardening | Phases 2–5 |
 | 7 | Release readiness | Phase 6 |
+
+---
+
+## Kernel Replacement Assessment
+
+A comprehensive review of the current implementation against the full
+Windows 3.1 kernel requirements has been completed.  The assessment
+identified significant gaps in API coverage, rendering, driver
+completeness, and protected-mode support.
+
+**WinDOS is not yet a full replacement for the Windows 3.1 Kernel.**
+
+For the detailed findings, gap catalog, and actionable final roadmap
+of missing steps, see **[KERNEL_ASSESSMENT.md](KERNEL_ASSESSMENT.md)**.
