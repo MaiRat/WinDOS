@@ -96,15 +96,15 @@ This roadmap breaks the work into small milestones to implement a full Windows 3
    - [x] Deliverable: staged compatibility across core Windows 3.1 subsystems.
 
 9. **Full integration**
-   - [ ] Perform end-to-end boot sequence validation with the custom kernel replacing the original.
-   - [ ] Validate full runtime stability across all integrated subsystems under normal workloads.
-   - [ ] Execute regression suite covering all prior steps and confirm no regressions.
-   - [ ] Document the complete test procedure for reproducible verification.
-   - [ ] Document all known limitations, unsupported configurations, and deferred work.
-   - [ ] Document supported configurations and minimum hardware/emulator requirements.
-   - [ ] Produce a release checklist covering build steps, test steps, and sign-off criteria.
-   - [ ] Verify reproducible builds produce bit-identical output across clean environments.
-   - [ ] Deliverable: fully replaceable kernel path for WinDOS with documented constraints.
+   - [x] Perform end-to-end boot sequence validation with the custom kernel replacing the original.
+   - [x] Validate full runtime stability across all integrated subsystems under normal workloads.
+   - [x] Execute regression suite covering all prior steps and confirm no regressions.
+   - [x] Document the complete test procedure for reproducible verification.
+   - [x] Document all known limitations, unsupported configurations, and deferred work.
+   - [x] Document supported configurations and minimum hardware/emulator requirements.
+   - [x] Produce a release checklist covering build steps, test steps, and sign-off criteria.
+   - [x] Verify reproducible builds produce bit-identical output across clean environments.
+   - [x] Deliverable: fully replaceable kernel path for WinDOS with documented constraints.
 
 ### Tracking and execution notes
 - Create dedicated sub-issues per step for:
