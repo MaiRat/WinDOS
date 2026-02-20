@@ -72,6 +72,9 @@ SEGMGR_OBJ     := $(BUILD_DIR)/ne_segmgr.obj
 RESOURCE_SRC   := $(SRC_DIR)/ne_resource.c
 RESOURCE_OBJ   := $(BUILD_DIR)/ne_resource.obj
 
+COMPAT_SRC     := $(SRC_DIR)/ne_compat.c
+COMPAT_OBJ     := $(BUILD_DIR)/ne_compat.obj
+
 TEST_SRC         := $(TEST_DIR)/test_ne_parser.c
 TEST_OBJ         := $(BUILD_DIR)/test_ne_parser.obj
 TEST_BIN         := $(BUILD_DIR)/test_ne_parser.exe
@@ -132,9 +135,13 @@ RESOURCE_TEST_SRC   := $(TEST_DIR)/test_ne_resource.c
 RESOURCE_TEST_OBJ   := $(BUILD_DIR)/test_ne_resource.obj
 RESOURCE_TEST_BIN   := $(BUILD_DIR)/test_ne_resource.exe
 
+COMPAT_TEST_SRC     := $(TEST_DIR)/test_ne_compat.c
+COMPAT_TEST_OBJ     := $(BUILD_DIR)/test_ne_compat.obj
+COMPAT_TEST_BIN     := $(BUILD_DIR)/test_ne_compat.exe
+
 .PHONY: all test clean
 
-all: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN) $(INTEGRATE_TEST_BIN) $(FULLINTEG_TEST_BIN) $(KERNEL_TEST_BIN) $(USER_TEST_BIN) $(GDI_TEST_BIN) $(DRIVER_TEST_BIN) $(SEGMGR_TEST_BIN) $(RESOURCE_TEST_BIN)
+all: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN) $(INTEGRATE_TEST_BIN) $(FULLINTEG_TEST_BIN) $(KERNEL_TEST_BIN) $(USER_TEST_BIN) $(GDI_TEST_BIN) $(DRIVER_TEST_BIN) $(SEGMGR_TEST_BIN) $(RESOURCE_TEST_BIN) $(COMPAT_TEST_BIN)
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
@@ -187,6 +194,9 @@ $(SEGMGR_OBJ): $(SEGMGR_SRC) $(SRC_DIR)/ne_segmgr.h $(SRC_DIR)/ne_parser.h | $(B
 $(RESOURCE_OBJ): $(RESOURCE_SRC) $(SRC_DIR)/ne_resource.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
+$(COMPAT_OBJ): $(COMPAT_SRC) $(SRC_DIR)/ne_compat.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -fo=$@ $<
+
 $(TEST_OBJ): $(TEST_SRC) $(SRC_DIR)/ne_parser.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
@@ -230,6 +240,9 @@ $(SEGMGR_TEST_OBJ): $(SEGMGR_TEST_SRC) $(SRC_DIR)/ne_segmgr.h $(SRC_DIR)/ne_pars
 	$(CC) $(CFLAGS) -fo=$@ $<
 
 $(RESOURCE_TEST_OBJ): $(RESOURCE_TEST_SRC) $(SRC_DIR)/ne_resource.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -fo=$@ $<
+
+$(COMPAT_TEST_OBJ): $(COMPAT_TEST_SRC) $(SRC_DIR)/ne_compat.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
 $(TEST_BIN): $(TEST_OBJ) $(PARSER_OBJ) | $(BUILD_DIR)
@@ -277,7 +290,10 @@ $(SEGMGR_TEST_BIN): $(SEGMGR_TEST_OBJ) $(SEGMGR_OBJ) $(PARSER_OBJ) | $(BUILD_DIR
 $(RESOURCE_TEST_BIN): $(RESOURCE_TEST_OBJ) $(RESOURCE_OBJ) | $(BUILD_DIR)
 	$(LD) $(LDFLAGS) name $@ file $(RESOURCE_TEST_OBJ),$(RESOURCE_OBJ)
 
-test: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN) $(INTEGRATE_TEST_BIN) $(FULLINTEG_TEST_BIN) $(KERNEL_TEST_BIN) $(USER_TEST_BIN) $(GDI_TEST_BIN) $(DRIVER_TEST_BIN) $(SEGMGR_TEST_BIN) $(RESOURCE_TEST_BIN)
+$(COMPAT_TEST_BIN): $(COMPAT_TEST_OBJ) $(COMPAT_OBJ) | $(BUILD_DIR)
+	$(LD) $(LDFLAGS) name $@ file $(COMPAT_TEST_OBJ),$(COMPAT_OBJ)
+
+test: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN) $(INTEGRATE_TEST_BIN) $(FULLINTEG_TEST_BIN) $(KERNEL_TEST_BIN) $(USER_TEST_BIN) $(GDI_TEST_BIN) $(DRIVER_TEST_BIN) $(SEGMGR_TEST_BIN) $(RESOURCE_TEST_BIN) $(COMPAT_TEST_BIN)
 	@echo "--- Running NE parser tests ---"
 	$(TEST_BIN)
 	@echo "--- Running NE loader tests ---"
@@ -308,6 +324,8 @@ test: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPE
 	$(SEGMGR_TEST_BIN)
 	@echo "--- Running Resource Manager tests (Phase 5) ---"
 	$(RESOURCE_TEST_BIN)
+	@echo "--- Running Compatibility tests (Phase 6) ---"
+	$(COMPAT_TEST_BIN)
 
 clean:
 	rm -rf $(BUILD_DIR)
@@ -373,6 +391,9 @@ host-test: | $(BUILD_DIR)
 	@echo "--- Resource manager (Phase 5) ---"
 	$(HOST_CC) $(HOST_CFLAGS) $(SRC_DIR)/ne_resource.c $(TEST_DIR)/test_ne_resource.c -o $(BUILD_DIR)/host_test_resource
 	$(BUILD_DIR)/host_test_resource
+	@echo "--- Compatibility testing (Phase 6) ---"
+	$(HOST_CC) $(HOST_CFLAGS) $(SRC_DIR)/ne_compat.c $(TEST_DIR)/test_ne_compat.c -o $(BUILD_DIR)/host_test_compat
+	$(BUILD_DIR)/host_test_compat
 	@echo "=== All host tests passed ==="
 
 host-clean:

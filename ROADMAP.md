@@ -88,13 +88,13 @@ Implement segment discarding, reloading, and full resource management required b
 
 Validate the replacement kernel against real Windows 3.1 binaries and applications.
 
-- [ ] Load and validate KERNEL.EXE, USER.EXE, and GDI.EXE from a stock Windows 3.1 installation.
-- [ ] Verify module loading, relocation, and inter-module import resolution for the stock system DLLs.
-- [ ] Test with at least one stock Windows 3.1 application (e.g., Notepad, Calculator, Write).
-- [ ] Profile memory usage and identify leaks or excessive consumption under sustained workloads.
-- [ ] Stress-test the cooperative scheduler with multiple concurrent tasks.
-- [ ] Document all known limitations, unsupported APIs, and deferred functionality.
-- [ ] Produce a compatibility matrix (application × subsystem × status).
+- [x] Load and validate KERNEL.EXE, USER.EXE, and GDI.EXE from a stock Windows 3.1 installation.
+- [x] Verify module loading, relocation, and inter-module import resolution for the stock system DLLs.
+- [x] Test with at least one stock Windows 3.1 application (e.g., Notepad, Calculator, Write).
+- [x] Profile memory usage and identify leaks or excessive consumption under sustained workloads.
+- [x] Stress-test the cooperative scheduler with multiple concurrent tasks.
+- [x] Document all known limitations, unsupported APIs, and deferred functionality.
+- [x] Produce a compatibility matrix (application × subsystem × status).
 
 ## Phase 7 – Release Readiness
 
