@@ -20,15 +20,21 @@ PARSER_OBJ  := $(BUILD_DIR)/ne_parser.o
 LOADER_SRC  := $(SRC_DIR)/ne_loader.c
 LOADER_OBJ  := $(BUILD_DIR)/ne_loader.o
 
+RELOC_SRC   := $(SRC_DIR)/ne_reloc.c
+RELOC_OBJ   := $(BUILD_DIR)/ne_reloc.o
+
 TEST_SRC         := $(TEST_DIR)/test_ne_parser.c
 TEST_BIN         := $(BUILD_DIR)/test_ne_parser
 
 LOADER_TEST_SRC  := $(TEST_DIR)/test_ne_loader.c
 LOADER_TEST_BIN  := $(BUILD_DIR)/test_ne_loader
 
+RELOC_TEST_SRC   := $(TEST_DIR)/test_ne_reloc.c
+RELOC_TEST_BIN   := $(BUILD_DIR)/test_ne_reloc
+
 .PHONY: all test clean
 
-all: $(TEST_BIN) $(LOADER_TEST_BIN)
+all: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN)
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
@@ -39,17 +45,25 @@ $(PARSER_OBJ): $(PARSER_SRC) $(SRC_DIR)/ne_parser.h | $(BUILD_DIR)
 $(LOADER_OBJ): $(LOADER_SRC) $(SRC_DIR)/ne_loader.h $(SRC_DIR)/ne_parser.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
+$(RELOC_OBJ): $(RELOC_SRC) $(SRC_DIR)/ne_reloc.h $(SRC_DIR)/ne_loader.h $(SRC_DIR)/ne_parser.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c -o $@ $<
+
 $(TEST_BIN): $(TEST_SRC) $(PARSER_OBJ) | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -o $@ $^
 
 $(LOADER_TEST_BIN): $(LOADER_TEST_SRC) $(PARSER_OBJ) $(LOADER_OBJ) | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -o $@ $^
 
-test: $(TEST_BIN) $(LOADER_TEST_BIN)
+$(RELOC_TEST_BIN): $(RELOC_TEST_SRC) $(PARSER_OBJ) $(LOADER_OBJ) $(RELOC_OBJ) | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -o $@ $^
+
+test: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN)
 	@echo "--- Running NE parser tests ---"
 	$(TEST_BIN)
 	@echo "--- Running NE loader tests ---"
 	$(LOADER_TEST_BIN)
+	@echo "--- Running NE relocation tests ---"
+	$(RELOC_TEST_BIN)
 
 clean:
 	rm -rf $(BUILD_DIR)
