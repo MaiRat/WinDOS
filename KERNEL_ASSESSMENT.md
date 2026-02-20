@@ -321,10 +321,10 @@ Required for any visible graphical output.
 
 Connect the existing `ne_resource` module to the KERNEL API stubs.
 
-- [ ] Wire `ne_kernel_load_string` to `ne_resource` string table lookup
-- [ ] Wire `ne_kernel_find_resource` / `ne_kernel_load_resource` /
+- [x] Wire `ne_kernel_load_string` to `ne_resource` string table lookup
+- [x] Wire `ne_kernel_find_resource` / `ne_kernel_load_resource` /
       `ne_kernel_lock_resource` to `ne_resource` module
-- [ ] Verify resource loading with stock Windows 3.1 system DLLs
+- [x] Verify resource loading with stock Windows 3.1 system DLLs
 
 ### Phase H – Protected-Mode (DPMI) Support
 

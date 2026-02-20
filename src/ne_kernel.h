@@ -26,6 +26,7 @@
 #include "ne_mem.h"
 #include "ne_task.h"
 #include "ne_module.h"
+#include "ne_resource.h"
 
 #include <setjmp.h>
 
@@ -230,6 +231,9 @@ typedef struct {
     uint16_t error_mode;       /* current error mode (SetErrorMode)         */
     uint16_t last_error;       /* last error code (GetLastError)            */
     void    *driver;           /* optional NEDrvContext for GetTickCount     */
+
+    /* Phase G – resource table (owned externally) */
+    NEResTable *res;           /* optional ne_resource table                */
 
     int      initialized;      /* non-zero after successful init            */
 } NEKernelContext;
@@ -594,6 +598,14 @@ const char *ne_kernel_strerror(int err);
  * NE_KERNEL_ERR_INIT if the kernel context is not initialised.
  */
 int ne_kernel_set_driver(NEKernelContext *ctx, void *driver);
+
+/*
+ * ne_kernel_set_resource_table - attach a resource table to the context.
+ *
+ * 'res' may be NULL to detach.  Returns NE_KERNEL_OK or
+ * NE_KERNEL_ERR_INIT if the kernel context is not initialised.
+ */
+int ne_kernel_set_resource_table(NEKernelContext *ctx, NEResTable *res);
 
 /*
  * ne_kernel_get_version - return the Windows version (3.10).

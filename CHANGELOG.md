@@ -2,6 +2,38 @@
 
 All notable changes to WinDOS are documented in this file.
 
+## [Unreleased] – Phase G: KERNEL Resource Stub Wiring
+
+### Added
+
+- **Phase G KERNEL Resource Wiring** (`ne_kernel`): Connected the
+  existing `ne_resource` module to the KERNEL.EXE API stubs so that
+  resource lookup, loading, and locking delegate to the resource table
+  instead of returning stub values:
+  - `LoadString` (`ne_kernel_load_string`) now looks up RT_STRING bundles
+    in the attached resource table, parses Pascal-style length-prefixed
+    strings, and copies the result into the caller's buffer
+  - `FindResource` (`ne_kernel_find_resource`) now searches the resource
+    table by type and name, supporting both ordinal (MAKEINTRESOURCE)
+    and string-name lookups
+  - `LoadResource` (`ne_kernel_load_resource`) now resolves a resource
+    info handle to a data handle via the resource table
+  - `LockResource` (`ne_kernel_lock_resource`) now returns a pointer to
+    the raw resource data for a given data handle
+  - `ne_kernel_set_resource_table` – new API to attach or detach an
+    `NEResTable` to/from the kernel context
+
+- **New `res` field** in `NEKernelContext` for optional `NEResTable`
+  pointer (owned externally).
+
+- **4 new unit tests** for Phase G resource wiring (LoadString with
+  string table data, FindResource/LoadResource/LockResource round-trip,
+  set_resource_table attach/detach, FindResource by string name).
+
+### Changed
+
+- Updated Makefile to link `ne_resource.c` in the kernel test build.
+
 ## [Unreleased] – Phase F: Driver Completion
 
 ### Added

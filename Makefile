@@ -285,8 +285,8 @@ $(INTEGRATE_TEST_BIN): $(INTEGRATE_TEST_OBJ) $(INTEGRATE_OBJ) | $(BUILD_DIR)
 $(FULLINTEG_TEST_BIN): $(FULLINTEG_TEST_OBJ) $(FULLINTEG_OBJ) | $(BUILD_DIR)
 	$(LD) $(LDFLAGS) name $@ file $(FULLINTEG_TEST_OBJ),$(FULLINTEG_OBJ)
 
-$(KERNEL_TEST_BIN): $(KERNEL_TEST_OBJ) $(KERNEL_OBJ) $(PARSER_OBJ) $(LOADER_OBJ) $(MODULE_OBJ) $(IMPEXP_OBJ) $(MEM_OBJ) $(TASK_OBJ) $(DRIVER_OBJ) | $(BUILD_DIR)
-	$(LD) $(LDFLAGS) name $@ file $(KERNEL_TEST_OBJ),$(KERNEL_OBJ),$(PARSER_OBJ),$(LOADER_OBJ),$(MODULE_OBJ),$(IMPEXP_OBJ),$(MEM_OBJ),$(TASK_OBJ),$(DRIVER_OBJ)
+$(KERNEL_TEST_BIN): $(KERNEL_TEST_OBJ) $(KERNEL_OBJ) $(PARSER_OBJ) $(LOADER_OBJ) $(MODULE_OBJ) $(IMPEXP_OBJ) $(MEM_OBJ) $(TASK_OBJ) $(DRIVER_OBJ) $(RESOURCE_OBJ) | $(BUILD_DIR)
+	$(LD) $(LDFLAGS) name $@ file $(KERNEL_TEST_OBJ),$(KERNEL_OBJ),$(PARSER_OBJ),$(LOADER_OBJ),$(MODULE_OBJ),$(IMPEXP_OBJ),$(MEM_OBJ),$(TASK_OBJ),$(DRIVER_OBJ),$(RESOURCE_OBJ)
 
 $(USER_TEST_BIN): $(USER_TEST_OBJ) $(USER_OBJ) | $(BUILD_DIR)
 	$(LD) $(LDFLAGS) name $@ file $(USER_TEST_OBJ),$(USER_OBJ)
@@ -392,7 +392,7 @@ host-test: | $(BUILD_DIR)
 	$(HOST_CC) $(HOST_CFLAGS) $(SRC_DIR)/ne_fullinteg.c $(TEST_DIR)/test_ne_fullinteg.c -o $(BUILD_DIR)/host_test_fullinteg
 	$(BUILD_DIR)/host_test_fullinteg
 	@echo "--- KERNEL.EXE API stubs ---"
-	$(HOST_CC) $(HOST_CFLAGS) $(SRC_DIR)/ne_parser.c $(SRC_DIR)/ne_loader.c $(SRC_DIR)/ne_module.c $(SRC_DIR)/ne_impexp.c $(SRC_DIR)/ne_mem.c $(SRC_DIR)/ne_task.c $(SRC_DIR)/ne_kernel.c $(SRC_DIR)/ne_driver.c $(TEST_DIR)/test_ne_kernel.c -o $(BUILD_DIR)/host_test_kernel
+	$(HOST_CC) $(HOST_CFLAGS) $(SRC_DIR)/ne_parser.c $(SRC_DIR)/ne_loader.c $(SRC_DIR)/ne_module.c $(SRC_DIR)/ne_impexp.c $(SRC_DIR)/ne_mem.c $(SRC_DIR)/ne_task.c $(SRC_DIR)/ne_kernel.c $(SRC_DIR)/ne_driver.c $(SRC_DIR)/ne_resource.c $(TEST_DIR)/test_ne_kernel.c -o $(BUILD_DIR)/host_test_kernel
 	$(BUILD_DIR)/host_test_kernel
 	@echo "--- USER.EXE subsystem ---"
 	$(HOST_CC) $(HOST_CFLAGS) $(SRC_DIR)/ne_user.c $(TEST_DIR)/test_ne_user.c -o $(BUILD_DIR)/host_test_user

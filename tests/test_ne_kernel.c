@@ -802,7 +802,7 @@ static void test_load_string_stub(void)
     NEKernelContext ctx;
     char            buf[64];
 
-    TEST_BEGIN("LoadString stub returns 0");
+    TEST_BEGIN("LoadString returns 0 without resource table");
 
     setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
 
@@ -821,7 +821,7 @@ static void test_find_resource_stub(void)
     NEModuleTable   modules;
     NEKernelContext ctx;
 
-    TEST_BEGIN("FindResource stub returns 0");
+    TEST_BEGIN("FindResource returns 0 without resource table");
 
     setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
 
@@ -840,7 +840,7 @@ static void test_load_resource_stub(void)
     NEModuleTable   modules;
     NEKernelContext ctx;
 
-    TEST_BEGIN("LoadResource stub returns 0");
+    TEST_BEGIN("LoadResource returns 0 without resource table");
 
     setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
 
@@ -858,12 +858,181 @@ static void test_lock_resource_stub(void)
     NEModuleTable   modules;
     NEKernelContext ctx;
 
-    TEST_BEGIN("LockResource stub returns NULL");
+    TEST_BEGIN("LockResource returns NULL without resource table");
 
     setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
 
     ASSERT_NULL(ne_kernel_lock_resource(&ctx, 1u));
 
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+/* =========================================================================
+ * Phase G – resource wiring tests
+ * ===================================================================== */
+
+static void test_load_string_wired(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    NEResTable      res;
+    char            buf[64];
+    int             n;
+
+    /*
+     * String ID 5 → bundle (5/16)+1 = 1, index 5.
+     * Build a bundle of 16 Pascal-style strings; index 5 = "Hello".
+     * Format: [len][chars] for each of 16 entries.
+     */
+    uint8_t bundle[128];
+    uint32_t off = 0;
+    int i;
+
+    TEST_BEGIN("LoadString returns string from resource table");
+
+    memset(bundle, 0, sizeof(bundle));
+    for (i = 0; i < 16; i++) {
+        if (i == 5) {
+            bundle[off++] = 5;  /* length of "Hello" */
+            bundle[off++] = 'H';
+            bundle[off++] = 'e';
+            bundle[off++] = 'l';
+            bundle[off++] = 'l';
+            bundle[off++] = 'o';
+        } else {
+            bundle[off++] = 0;  /* empty string */
+        }
+    }
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    ne_res_table_init(&res, 16);
+    ne_kernel_set_resource_table(&ctx, &res);
+
+    /* Add RT_STRING bundle 1 (covers string IDs 0–15) */
+    ne_res_add(&res, RT_STRING, 1, NULL, bundle, off);
+
+    n = ne_kernel_load_string(&ctx, 1u, 5u, buf, sizeof(buf));
+    ASSERT_EQ(n, 5);
+    ASSERT_STR_EQ(buf, "Hello");
+
+    /* String ID 0 should be empty */
+    n = ne_kernel_load_string(&ctx, 1u, 0u, buf, sizeof(buf));
+    ASSERT_EQ(n, 0);
+    ASSERT_STR_EQ(buf, "");
+
+    /* String ID 99 (missing bundle) should return 0 */
+    n = ne_kernel_load_string(&ctx, 1u, 99u, buf, sizeof(buf));
+    ASSERT_EQ(n, 0);
+
+    ne_res_table_free(&res);
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_find_load_lock_resource_wired(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    NEResTable      res;
+    uint32_t        hInfo;
+    uint16_t        hData;
+    void           *ptr;
+
+    static const uint8_t dialog_data[] = { 0x01, 0x02, 0x03, 0x04 };
+
+    TEST_BEGIN("FindResource/LoadResource/LockResource wired");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    ne_res_table_init(&res, 16);
+    ne_kernel_set_resource_table(&ctx, &res);
+
+    /* Add a dialog resource with type=RT_DIALOG(5), name_id=1 */
+    ne_res_add(&res, RT_DIALOG, 1, NULL, dialog_data, sizeof(dialog_data));
+
+    /* FindResource using MAKEINTRESOURCE-style ordinals */
+    hInfo = ne_kernel_find_resource(&ctx, 1u,
+                                    (const char *)(uintptr_t)1u,
+                                    (const char *)(uintptr_t)RT_DIALOG);
+    ASSERT_NE(hInfo, (uint32_t)0u);
+
+    /* LoadResource */
+    hData = ne_kernel_load_resource(&ctx, 1u, hInfo);
+    ASSERT_NE(hData, (uint16_t)0u);
+
+    /* LockResource */
+    ptr = ne_kernel_lock_resource(&ctx, hData);
+    ASSERT_NOT_NULL(ptr);
+    ASSERT_EQ(((const uint8_t *)ptr)[0], 0x01);
+    ASSERT_EQ(((const uint8_t *)ptr)[3], 0x04);
+
+    /* Lookup for non-existent resource returns 0 */
+    hInfo = ne_kernel_find_resource(&ctx, 1u,
+                                    (const char *)(uintptr_t)99u,
+                                    (const char *)(uintptr_t)RT_DIALOG);
+    ASSERT_EQ(hInfo, (uint32_t)0u);
+
+    ne_res_table_free(&res);
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_set_resource_table(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    NEResTable      res;
+
+    TEST_BEGIN("set_resource_table attaches and detaches");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    ne_res_table_init(&res, 8);
+
+    ASSERT_EQ(ne_kernel_set_resource_table(&ctx, &res), NE_KERNEL_OK);
+    ASSERT_EQ(ne_kernel_set_resource_table(&ctx, NULL), NE_KERNEL_OK);
+
+    ne_res_table_free(&res);
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_find_resource_by_name(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    NEResTable      res;
+    uint32_t        hInfo;
+
+    static const uint8_t icon_data[] = { 0xAA, 0xBB };
+
+    TEST_BEGIN("FindResource by string name via resource table");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    ne_res_table_init(&res, 16);
+    ne_kernel_set_resource_table(&ctx, &res);
+
+    /* Add an icon resource with string name */
+    ne_res_add(&res, RT_ICON, 0, "MYICON", icon_data, sizeof(icon_data));
+
+    /* Lookup by type ordinal + string name */
+    hInfo = ne_kernel_find_resource(&ctx, 1u,
+                                    "MYICON",
+                                    (const char *)(uintptr_t)RT_ICON);
+    ASSERT_NE(hInfo, (uint32_t)0u);
+
+    ne_res_table_free(&res);
     teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
     TEST_PASS();
 }
@@ -2328,6 +2497,13 @@ int main(void)
     test_find_resource_stub();
     test_load_resource_stub();
     test_lock_resource_stub();
+
+    /* --- Phase G: resource wiring --- */
+    printf("\n--- Phase G: resource wiring ---\n");
+    test_set_resource_table();
+    test_load_string_wired();
+    test_find_load_lock_resource_wired();
+    test_find_resource_by_name();
 
     /* --- Atom APIs --- */
     printf("\n--- Atom APIs ---\n");
