@@ -66,11 +66,11 @@ Provide the minimal interfaces required by KERNEL for the USER.EXE and GDI.EXE s
 
 Enable keyboard, timer, and display drivers under DOS.
 
-- [ ] Implement keyboard driver: hook INT 09h, translate scan codes to Windows virtual key codes, feed events into the message queue.
-- [ ] Implement timer driver: hook INT 08h (or INT 1Ch), provide `GetTickCount`, `SetTimer`, `KillTimer`.
-- [ ] Implement display driver: interface with VGA/EGA text or graphics mode for basic output.
-- [ ] Implement mouse driver: hook INT 33h for mouse position and button state, feed events into the message queue.
-- [ ] Verify driver coexistence (keyboard + timer + display) with the cooperative scheduler under DOS.
+- [x] Implement keyboard driver: hook INT 09h, translate scan codes to Windows virtual key codes, feed events into the message queue.
+- [x] Implement timer driver: hook INT 08h (or INT 1Ch), provide `GetTickCount`, `SetTimer`, `KillTimer`.
+- [x] Implement display driver: interface with VGA/EGA text or graphics mode for basic output.
+- [x] Implement mouse driver: hook INT 33h for mouse position and button state, feed events into the message queue.
+- [x] Verify driver coexistence (keyboard + timer + display) with the cooperative scheduler under DOS.
 
 ## Phase 5 – Dynamic Segment and Resource Management
 
