@@ -22,6 +22,113 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef __WATCOMC__
+#include <dos.h>    /* _dos_setvect, _dos_getvect, __interrupt */
+#include <i86.h>
+
+/*
+ * Saved original IVT entries so they can be restored when a handler is
+ * removed or when the trap table is freed.
+ */
+static void (__interrupt __far *g_saved_ivt[NE_TRAP_VEC_COUNT])(void);
+
+/*
+ * Global pointer to the active trap table, used by the __interrupt stubs
+ * because they cannot receive user-defined arguments directly.
+ */
+static NETrapTable *g_active_trap_table = NULL;
+
+/*
+ * Generic __interrupt stub template.  One stub per vector would be ideal
+ * but Open Watcom inline assembly cannot generate parameterised
+ * __interrupt functions in a loop.  Instead, we define one dispatcher
+ * that captures the register state from the interrupt frame and a set
+ * of thin per-vector stubs that call through to it.
+ *
+ * The compiler-generated __interrupt prologue pushes all registers and
+ * restores them on IRET, so we only need to read them.
+ */
+static void ne_trap_isr_common(uint8_t vec,
+                                uint16_t r_ax, uint16_t r_bx,
+                                uint16_t r_cx, uint16_t r_dx,
+                                uint16_t r_si, uint16_t r_di,
+                                uint16_t r_bp, uint16_t r_ds,
+                                uint16_t r_es, uint16_t r_flags,
+                                uint16_t r_cs, uint16_t r_ip,
+                                uint16_t r_ss, uint16_t r_sp)
+{
+    NETrapContext ctx;
+
+    ctx.ax         = r_ax;
+    ctx.bx         = r_bx;
+    ctx.cx         = r_cx;
+    ctx.dx         = r_dx;
+    ctx.si         = r_si;
+    ctx.di         = r_di;
+    ctx.bp         = r_bp;
+    ctx.ds         = r_ds;
+    ctx.es         = r_es;
+    ctx.flags      = r_flags;
+    ctx.cs         = r_cs;
+    ctx.ip         = r_ip;
+    ctx.ss         = r_ss;
+    ctx.sp         = r_sp;
+    ctx.error_code = 0;
+    ctx.fault_vec  = vec;
+
+    if (g_active_trap_table)
+        ne_trap_dispatch(g_active_trap_table, vec, &ctx);
+}
+
+/*
+ * Per-vector __interrupt stubs.
+ *
+ * Each stub captures the register state from the compiler-generated
+ * interrupt frame and forwards to ne_trap_isr_common.  The Watcom
+ * __interrupt keyword ensures the correct PUSHAD/IRET prologue/epilogue.
+ */
+#define DEFINE_ISR_STUB(VEC)                                            \
+    static void __interrupt __far ne_trap_isr_##VEC(                    \
+        union INTPACK r)                                                \
+    {                                                                   \
+        ne_trap_isr_common((VEC),                                       \
+                           r.w.ax, r.w.bx, r.w.cx, r.w.dx,            \
+                           r.w.si, r.w.di, r.w.bp, r.w.ds,            \
+                           r.w.es, r.w.flags, r.w.cs, r.w.ip,         \
+                           r.w.ss, r.w.sp);                            \
+    }
+
+DEFINE_ISR_STUB(0x00)
+DEFINE_ISR_STUB(0x01)
+DEFINE_ISR_STUB(0x02)
+DEFINE_ISR_STUB(0x03)
+DEFINE_ISR_STUB(0x04)
+DEFINE_ISR_STUB(0x05)
+DEFINE_ISR_STUB(0x06)
+DEFINE_ISR_STUB(0x07)
+DEFINE_ISR_STUB(0x08)
+DEFINE_ISR_STUB(0x09)
+DEFINE_ISR_STUB(0x0A)
+DEFINE_ISR_STUB(0x0B)
+DEFINE_ISR_STUB(0x0C)
+DEFINE_ISR_STUB(0x0D)
+DEFINE_ISR_STUB(0x0E)
+DEFINE_ISR_STUB(0x0F)
+
+/*
+ * Lookup table mapping vector index → __interrupt stub.
+ */
+typedef void (__interrupt __far *ISRStubFn)(union INTPACK);
+
+static ISRStubFn g_isr_stubs[NE_TRAP_VEC_COUNT] = {
+    ne_trap_isr_0x00, ne_trap_isr_0x01, ne_trap_isr_0x02, ne_trap_isr_0x03,
+    ne_trap_isr_0x04, ne_trap_isr_0x05, ne_trap_isr_0x06, ne_trap_isr_0x07,
+    ne_trap_isr_0x08, ne_trap_isr_0x09, ne_trap_isr_0x0A, ne_trap_isr_0x0B,
+    ne_trap_isr_0x0C, ne_trap_isr_0x0D, ne_trap_isr_0x0E, ne_trap_isr_0x0F,
+};
+
+#endif /* __WATCOMC__ */
+
 /* -------------------------------------------------------------------------
  * Vectors considered unrecoverable by the built-in default handler
  *
@@ -118,12 +225,15 @@ void ne_trap_panic(NETrapTable *tbl, const char *msg, const NETrapContext *ctx)
     /*
      * Built-in unrecoverable path.
      *
-     * On the Watcom/DOS 16-bit target replace exit(1) with:
-     *   __asm { cli };
-     *   __asm { hlt };
-     * to halt the CPU cleanly without returning to DOS.
+     * On the Watcom/DOS 16-bit target halt the CPU cleanly.
+     * On the POSIX host, exit the process.
      */
+#ifdef __WATCOMC__
+    _asm { cli };
+    _asm { hlt };
+#else
     exit(1);
+#endif
 }
 
 /* =========================================================================
@@ -149,6 +259,10 @@ int ne_trap_table_init(NETrapTable *tbl)
     tbl->panic_fn  = NULL;
     tbl->panic_user = NULL;
 
+#ifdef __WATCOMC__
+    g_active_trap_table = tbl;
+#endif
+
     return NE_TRAP_OK;
 }
 
@@ -157,12 +271,24 @@ void ne_trap_table_free(NETrapTable *tbl)
     if (!tbl)
         return;
 
+#ifdef __WATCOMC__
     /*
-     * On the Watcom/DOS target, restore all modified IVT entries here by
-     * calling _dos_setvect() with the previously saved original vectors.
-     * This ensures that DOS interrupt handling is not left in a broken
-     * state if the trap subsystem is shut down mid-session.
+     * Restore all modified IVT entries to their original values saved
+     * during ne_trap_install() calls.
      */
+    {
+        uint8_t i;
+        for (i = 0; i < NE_TRAP_VEC_COUNT; i++) {
+            if (g_saved_ivt[i] != NULL) {
+                _dos_setvect(i, g_saved_ivt[i]);
+                g_saved_ivt[i] = NULL;
+            }
+        }
+    }
+    if (g_active_trap_table == tbl)
+        g_active_trap_table = NULL;
+#endif
+
     memset(tbl, 0, sizeof(*tbl));
 }
 
@@ -183,12 +309,18 @@ int ne_trap_install(NETrapTable  *tbl,
     tbl->entries[vec].fn   = fn;
     tbl->entries[vec].user = user;
 
+#ifdef __WATCOMC__
     /*
-     * Watcom/DOS 16-bit target:
-     *   Save the old vector with _dos_getvect(vec), then call
-     *   _dos_setvect(vec, stub) where 'stub' is the __interrupt wrapper
-     *   that builds an NETrapContext and calls ne_trap_dispatch().
+     * Install the corresponding __interrupt stub into the real-mode IVT.
+     * Save the original vector for later restoration.
      */
+    if (fn != NULL) {
+        if (g_saved_ivt[vec] == NULL)
+            g_saved_ivt[vec] = _dos_getvect(vec);
+        _dos_setvect(vec, (void (__interrupt __far *)(void))g_isr_stubs[vec]);
+    }
+#endif
+
     return NE_TRAP_OK;
 }
 
@@ -202,11 +334,16 @@ int ne_trap_remove(NETrapTable *tbl, uint8_t vec)
     tbl->entries[vec].fn   = NULL;
     tbl->entries[vec].user = NULL;
 
+#ifdef __WATCOMC__
     /*
-     * Watcom/DOS 16-bit target:
-     *   Restore the original vector using the pointer saved during
-     *   ne_trap_install(): _dos_setvect(vec, saved_vec[vec]).
+     * Restore the original IVT entry saved during ne_trap_install().
      */
+    if (g_saved_ivt[vec] != NULL) {
+        _dos_setvect(vec, g_saved_ivt[vec]);
+        g_saved_ivt[vec] = NULL;
+    }
+#endif
+
     return NE_TRAP_OK;
 }
 

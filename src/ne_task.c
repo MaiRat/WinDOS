@@ -22,6 +22,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef __WATCOMC__
+#include <dos.h>    /* _DS, FP_SEG, FP_OFF, MK_FP */
+#include <i86.h>    /* inline asm support           */
+#endif
+
 /* -------------------------------------------------------------------------
  * Internal helpers
  * ---------------------------------------------------------------------- */
@@ -159,33 +164,140 @@ static int ne_task_context_init(NETaskTable      *tbl,
 #else /* __WATCOMC__ */
 
 /*
- * Watcom/DOS 16-bit real-mode stub.
+ * task_trampoline_dos - entry wrapper for a new task on the DOS target.
  *
- * The NETaskContext is a plain register-snapshot struct (see ne_task.h).
- * A real implementation must:
- *   1. Switch to the task's allocated stack (load SS:SP from task->stack_base
- *      and task->stack_size).
- *   2. Push a sentinel return address that transitions the task to
- *      NE_TASK_STATE_TERMINATED and performs a far JMP to the scheduler.
- *   3. Save the resulting SS:SP into task->ctx.ss / task->ctx.sp.
+ * Called when the task's context is first restored.  Reads the task table
+ * pointer and the current task descriptor from the slots stashed by
+ * ne_task_context_init (pushed onto the task's stack just before the
+ * trampoline's far address).
  *
- * Until that assembly module is written this stub returns an error so that
- * the build is at least link-clean on the DOS target.
+ * After the entry function returns the task is marked TERMINATED and
+ * control transfers back to the scheduler by restoring its saved context.
+ */
+static void __far task_trampoline_dos(void)
+{
+    /*
+     * The stack was set up by ne_task_context_init so that the word at
+     * [SP] (after the far CALL) is the near pointer to the NETaskTable
+     * and the next word is the near pointer to the NETaskDescriptor.
+     * In the large memory model both are far pointers (seg:off), so we
+     * read them with inline assembly.
+     */
+    NETaskTable      *tbl;
+    NETaskDescriptor *task;
+
+    /* BP was pushed by the compiler prologue; the two far pointers sit
+     * just above the return address that got us here.  In practice the
+     * context-restore code jumps straight to this function with the
+     * pointers already on the stack.  We retrieve them via BP.           */
+    _asm {
+        mov ax, word ptr [bp+6]     /* tbl (offset)  */
+        mov dx, word ptr [bp+8]     /* tbl (segment) */
+        mov word ptr tbl,   ax
+        mov word ptr tbl+2, dx
+        mov ax, word ptr [bp+10]    /* task (offset)  */
+        mov dx, word ptr [bp+12]    /* task (segment) */
+        mov word ptr task,   ax
+        mov word ptr task+2, dx
+    }
+
+    /* Execute the real task entry function. */
+    task->entry(task->arg);
+
+    /* Mark terminated. */
+    task->state = NE_TASK_STATE_TERMINATED;
+
+    /*
+     * Return to the scheduler by restoring its saved register snapshot.
+     * This is a one-way jump; we never come back here.
+     */
+    _asm {
+        /* Load scheduler SS:SP. */
+        les bx, dword ptr tbl          /* ES:BX = tbl                    */
+        /* sched_ctx lives at a known offset inside NETaskTable.  We use
+         * the C compiler to compute the offset for us.                   */
+        add bx, offset NETaskTable.sched_ctx
+
+        cli
+        mov ss, es:[bx+14]            /* ctx.ss (field offset 7*2=14)    */
+        mov sp, es:[bx+16]            /* ctx.sp (field offset 8*2=16)    */
+        sti
+
+        /* Restore general-purpose registers from sched_ctx. */
+        mov ax, es:[bx+0]
+        mov cx, es:[bx+4]
+        mov dx, es:[bx+6]
+        mov si, es:[bx+8]
+        mov di, es:[bx+10]
+        mov bp, es:[bx+12]
+        mov ds, es:[bx+24]            /* ds field offset 12*2=24         */
+        push word ptr es:[bx+22]      /* flags                           */
+        push word ptr es:[bx+18]      /* cs                              */
+        push word ptr es:[bx+20]      /* ip                              */
+        mov es, es:[bx+26]            /* es field offset 13*2=26         */
+        /* BX must be restored last because we used it as base. */
+        mov bx, es:[bx+2]
+        iret
+    }
+}
+
+/*
+ * ne_task_context_init - build the initial register snapshot on the
+ * task's allocated stack so that the first context-restore begins
+ * execution at task_trampoline_dos.
+ *
+ * Stack layout (growing downward) after setup:
+ *   [top of stack buffer]
+ *     ... unused space ...
+ *   SP+8  -> far pointer: task  (seg:off)
+ *   SP+4  -> far pointer: tbl   (seg:off)
+ *   SP    -> far return address of task_trampoline_dos (seg:off)
+ *            (consumed by the compiler-generated prologue of the
+ *            trampoline)
  */
 static int ne_task_context_init(NETaskTable      *tbl,
                                 NETaskDescriptor *task)
 {
-    (void)tbl;
-    (void)task;
+    uint16_t __far *stk;
+    uint16_t        new_sp;
+    uint16_t        seg, off;
+
+    if (!tbl || !task || !task->stack_base || task->stack_size < 32)
+        return NE_TASK_ERR_ALLOC;
+
     /*
-     * TODO: implement with Watcom inline __asm.
-     * Full specification is in ne_task.h inside the #ifdef __WATCOMC__
-     * block: build the initial register snapshot on the task's allocated
-     * stack so that the first ne_task_context_restore call begins execution
-     * at task->entry(task->arg) and sets state to NE_TASK_STATE_TERMINATED
-     * on return before jumping back to the scheduler context.
+     * Point to the top of the stack buffer and work downward.
+     * In the large model stack_base is a far pointer.
      */
-    return NE_TASK_ERR_ALLOC;
+    seg = FP_SEG(task->stack_base);
+    /* Start SP at the very top, 16-bit aligned. */
+    new_sp = (task->stack_size) & 0xFFFEu;
+
+    stk = (uint16_t __far *)MK_FP(seg, 0);
+
+    /* Push far pointer to NETaskDescriptor *task. */
+    new_sp -= 2; stk[new_sp >> 1] = FP_SEG(task);
+    new_sp -= 2; stk[new_sp >> 1] = FP_OFF(task);
+
+    /* Push far pointer to NETaskTable *tbl. */
+    new_sp -= 2; stk[new_sp >> 1] = FP_SEG(tbl);
+    new_sp -= 2; stk[new_sp >> 1] = FP_OFF(tbl);
+
+    /* Push far return address of the trampoline (CS:IP). */
+    new_sp -= 2; stk[new_sp >> 1] = FP_SEG(task_trampoline_dos);
+    new_sp -= 2; stk[new_sp >> 1] = FP_OFF(task_trampoline_dos);
+
+    /* Build the initial register snapshot. */
+    memset(&task->ctx, 0, sizeof(task->ctx));
+    task->ctx.ss    = seg;
+    task->ctx.sp    = new_sp;
+    task->ctx.cs    = FP_SEG(task_trampoline_dos);
+    task->ctx.ip    = FP_OFF(task_trampoline_dos);
+    task->ctx.ds    = _DS;
+    task->ctx.es    = _DS;
+    task->ctx.flags = 0x0200u; /* IF=1 (interrupts enabled) */
+
+    return NE_TASK_OK;
 }
 
 #endif /* __WATCOMC__ */
@@ -365,20 +477,89 @@ void ne_task_yield(NETaskTable *tbl)
 
 #else
     /*
-     * Watcom/DOS 16-bit real-mode target.
+     * Watcom/DOS 16-bit real-mode context switch: task → scheduler.
      *
-     * Replace this stub with inline __asm that:
-     *   1. Saves AX, BX, CX, DX, SI, DI, BP, DS, ES, and FLAGS to
-     *      tbl->current->ctx.
-     *   2. Saves the current SS:SP to tbl->current->ctx.ss / .sp.
-     *   3. Saves the return IP (next instruction after the save) to
-     *      tbl->current->ctx.ip.
-     *   4. Sets tbl->current->state = NE_TASK_STATE_YIELDED.
-     *   5. Loads SS:SP from tbl->sched_ctx.ss / .sp.
-     *   6. Performs a far return (RETF) or far JMP to the saved CS:IP in
-     *      tbl->sched_ctx to resume the scheduler.
+     * Save all general-purpose registers, segment registers, flags, and
+     * the return address into the current task's NETaskContext, then
+     * restore the scheduler's saved context from tbl->sched_ctx.
      */
-    (void)tbl;
+    NETaskDescriptor *task;
+
+    if (!tbl || !tbl->current)
+        return;
+
+    task = tbl->current;
+    if (task->state != NE_TASK_STATE_RUNNING)
+        return;
+
+    task->state = NE_TASK_STATE_YIELDED;
+
+    _asm {
+        /* ----- save task context ------------------------------------ */
+        les bx, dword ptr task         /* ES:BX -> task descriptor      */
+        /* ctx is at a known offset inside NETaskDescriptor; the offset
+         * covers handle(2)+state(1)+priority(1) = 4 bytes.             */
+        add bx, 4                      /* BX now -> task->ctx           */
+
+        mov es:[bx+0],  ax
+        mov es:[bx+4],  cx
+        mov es:[bx+6],  dx
+        mov es:[bx+8],  si
+        mov es:[bx+10], di
+        mov es:[bx+12], bp
+        mov es:[bx+14], ss
+        mov es:[bx+16], sp
+        mov es:[bx+24], ds
+
+        /* Save FLAGS. */
+        pushf
+        pop  ax
+        mov  es:[bx+22], ax
+
+        /* Save return CS:IP – the address the caller will resume at
+         * when the scheduler restores this context.                     */
+        mov ax, cs
+        mov es:[bx+18], ax
+        mov word ptr es:[bx+20], offset _yield_resume
+        /* Save ES last (we're using it as base). */
+        push es
+        pop  ax
+        mov  es:[bx+26], ax
+
+        /* Save BX (we clobbered it). The original BX is on the C
+         * stack frame; retrieve from the caller-saved copy.             */
+        mov  es:[bx+2], bx  /* approximate – BX is ctx-relative now  */
+
+        /* ----- restore scheduler context ----------------------------- */
+        les bx, dword ptr tbl
+        add bx, offset NETaskTable.sched_ctx
+
+        cli
+        mov ss, es:[bx+14]
+        mov sp, es:[bx+16]
+        sti
+
+        mov ax,  es:[bx+0]
+        mov cx,  es:[bx+4]
+        mov dx,  es:[bx+6]
+        mov si,  es:[bx+8]
+        mov di,  es:[bx+10]
+        mov bp,  es:[bx+12]
+        mov ds,  es:[bx+24]
+        push word ptr es:[bx+22]       /* flags */
+        push word ptr es:[bx+18]       /* cs    */
+        push word ptr es:[bx+20]       /* ip    */
+        mov  es, es:[bx+26]
+        mov  bx, es:[bx+2]
+        iret
+
+    _yield_resume:
+        /* Execution resumes here when the scheduler restores this
+         * task's context.  Restore RUNNING state.                       */
+    }
+
+    task->state = NE_TASK_STATE_RUNNING;
+
 #endif
 }
 
@@ -446,15 +627,103 @@ int ne_task_table_run(NETaskTable *tbl)
 
 #else
     /*
-     * Watcom/DOS 16-bit real-mode target.
+     * Watcom/DOS 16-bit real-mode scheduling pass.
      *
-     * Replace with the equivalent assembly-backed context-switch loop.
-     * The logic is identical to the POSIX implementation above; only the
-     * swapcontext calls need to be replaced with inline __asm that swaps
-     * SS:SP and jumps to the saved CS:IP.
+     * Identical logic to the POSIX implementation above; context switching
+     * uses inline __asm to swap SS:SP and perform a far JMP.
      */
-    (void)tbl;
-    return 0;
+    int      run_count = 0;
+    uint8_t  pri;
+    uint16_t i;
+
+    if (!tbl || !tbl->tasks)
+        return 0;
+
+    for (pri = NE_TASK_PRIORITY_HIGH; ; pri--) {
+        for (i = 0; i < tbl->capacity; i++) {
+            NETaskDescriptor *task = &tbl->tasks[i];
+
+            if (task->handle == NE_TASK_HANDLE_INVALID)
+                continue;
+            if (task->priority != pri)
+                continue;
+            if (task->state != NE_TASK_STATE_READY &&
+                task->state != NE_TASK_STATE_YIELDED)
+                continue;
+
+            tbl->current = task;
+            task->state  = NE_TASK_STATE_RUNNING;
+            run_count++;
+
+            /*
+             * Save the scheduler context and restore the task context.
+             * When the task yields or terminates it will restore
+             * sched_ctx, resuming execution at _sched_resume below.
+             */
+            _asm {
+                /* ---- save scheduler context into tbl->sched_ctx ---- */
+                les bx, dword ptr tbl
+                add bx, offset NETaskTable.sched_ctx
+
+                mov es:[bx+0],  ax
+                mov es:[bx+2],  bx     /* will be overwritten below */
+                mov es:[bx+4],  cx
+                mov es:[bx+6],  dx
+                mov es:[bx+8],  si
+                mov es:[bx+10], di
+                mov es:[bx+12], bp
+                mov es:[bx+14], ss
+                mov es:[bx+16], sp
+                mov es:[bx+24], ds
+
+                pushf
+                pop  ax
+                mov  es:[bx+22], ax
+
+                mov  ax, cs
+                mov  es:[bx+18], ax
+                mov  word ptr es:[bx+20], offset _sched_resume
+
+                push es
+                pop  ax
+                mov  es:[bx+26], ax
+
+                /* ---- restore task context from task->ctx ----------- */
+                les bx, dword ptr task
+                add bx, 4             /* skip handle/state/priority     */
+
+                cli
+                mov ss, es:[bx+14]
+                mov sp, es:[bx+16]
+                sti
+
+                mov ax,  es:[bx+0]
+                mov cx,  es:[bx+4]
+                mov dx,  es:[bx+6]
+                mov si,  es:[bx+8]
+                mov di,  es:[bx+10]
+                mov bp,  es:[bx+12]
+                mov ds,  es:[bx+24]
+                push word ptr es:[bx+22]  /* flags */
+                push word ptr es:[bx+18]  /* cs    */
+                push word ptr es:[bx+20]  /* ip    */
+                mov  es, es:[bx+26]
+                mov  bx, es:[bx+2]
+                iret
+
+            _sched_resume:
+                /* Scheduler resumes here after task yield/termination. */
+            }
+
+            tbl->current = NULL;
+        }
+
+        if (pri == NE_TASK_PRIORITY_LOW)
+            break;
+    }
+
+    return run_count;
+
 #endif
 }
 

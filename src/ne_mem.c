@@ -14,6 +14,95 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef __WATCOMC__
+#include <dos.h>
+#include <i86.h>
+
+/*
+ * DOS INT 21h memory allocation wrappers.
+ *
+ * AH=48h – Allocate memory: BX = paragraphs, returns segment in AX.
+ * AH=49h – Free memory:     ES = segment to free.
+ * AH=4Ah – Resize memory:   ES = segment, BX = new paragraphs.
+ *
+ * These functions use far pointers (segment:0000) to return the
+ * allocated block base address.  Callers must treat the returned
+ * pointer as a far pointer to the start of the memory block.
+ */
+
+/* Convert byte count to paragraph count (16-byte units), rounding up. */
+static uint16_t bytes_to_paras(uint32_t bytes)
+{
+    return (uint16_t)((bytes + 15u) >> 4);
+}
+
+/*
+ * dos_alloc - allocate conventional memory via INT 21h / AH=48h.
+ * Returns a far pointer to the block or NULL on failure.
+ */
+static void __far *dos_alloc(uint32_t size)
+{
+    union REGS  r;
+    struct SREGS sr;
+
+    if (size == 0)
+        return NULL;
+
+    r.h.ah = 0x48;
+    r.x.bx = bytes_to_paras(size);
+    intdosx(&r, &r, &sr);
+
+    if (r.x.cflag)
+        return NULL;
+
+    return MK_FP(r.x.ax, 0);
+}
+
+/*
+ * dos_free - release conventional memory via INT 21h / AH=49h.
+ */
+static void dos_free(void __far *ptr)
+{
+    union REGS   r;
+    struct SREGS sr;
+
+    if (ptr == NULL)
+        return;
+
+    segread(&sr);
+    sr.es  = FP_SEG(ptr);
+    r.h.ah = 0x49;
+    intdosx(&r, &r, &sr);
+}
+
+/*
+ * dos_calloc - allocate and zero-fill via dos_alloc + _fmemset.
+ */
+static void __far *dos_calloc(uint32_t size)
+{
+    void __far *p = dos_alloc(size);
+    if (p)
+        _fmemset(p, 0, (size_t)size);
+    return p;
+}
+
+#endif /* __WATCOMC__ */
+
+/*
+ * Portable allocation macros.
+ * On the Watcom/DOS target these expand to the DOS INT 21h wrappers above.
+ * On the POSIX host they expand to the standard C library calls.
+ */
+#ifdef __WATCOMC__
+#define NE_MALLOC(sz)      dos_alloc((uint32_t)(sz))
+#define NE_CALLOC(n, sz)   dos_calloc((uint32_t)(n) * (uint32_t)(sz))
+#define NE_FREE(p)         dos_free(p)
+#else
+#define NE_MALLOC(sz)      malloc((size_t)(sz))
+#define NE_CALLOC(n, sz)   calloc((size_t)(n), (size_t)(sz))
+#define NE_FREE(p)         free(p)
+#endif
+
 /* =========================================================================
  * Internal helpers – GMEM
  * ===================================================================== */
@@ -66,7 +155,7 @@ int ne_gmem_table_init(NEGMemTable *tbl, uint16_t capacity)
 
     memset(tbl, 0, sizeof(*tbl));
 
-    tbl->blocks = (NEGMemBlock *)calloc(capacity, sizeof(NEGMemBlock));
+    tbl->blocks = (NEGMemBlock *)NE_CALLOC(capacity, sizeof(NEGMemBlock));
     if (!tbl->blocks)
         return NE_MEM_ERR_ALLOC;
 
@@ -88,11 +177,11 @@ void ne_gmem_table_free(NEGMemTable *tbl)
         for (i = 0; i < tbl->capacity; i++) {
             if (tbl->blocks[i].handle != NE_GMEM_HANDLE_INVALID &&
                 tbl->blocks[i].data   != NULL) {
-                free(tbl->blocks[i].data);
+                NE_FREE(tbl->blocks[i].data);
                 tbl->blocks[i].data = NULL;
             }
         }
-        free(tbl->blocks);
+        NE_FREE(tbl->blocks);
     }
 
     memset(tbl, 0, sizeof(*tbl));
@@ -122,12 +211,13 @@ NEGMemHandle ne_gmem_alloc(NEGMemTable *tbl,
 
     /*
      * Allocate the data buffer.
-     * On Watcom/DOS replace with _fmalloc / _fcalloc or INT 21h AH=48h.
+     * On Watcom/DOS: uses DOS INT 21h AH=48h for conventional memory.
+     * On POSIX host: uses standard C library malloc/calloc.
      */
     if (flags & NE_GMEM_ZEROINIT) {
-        buf = (uint8_t *)calloc((size_t)size, 1u);
+        buf = (uint8_t *)NE_CALLOC(1u, size);
     } else {
-        buf = (uint8_t *)malloc((size_t)size);
+        buf = (uint8_t *)NE_MALLOC(size);
     }
     if (!buf)
         return NE_GMEM_HANDLE_INVALID;
@@ -163,7 +253,7 @@ int ne_gmem_free(NEGMemTable *tbl, NEGMemHandle handle)
 
     /* Free the data buffer. */
     if (b->data) {
-        free(b->data);
+        NE_FREE(b->data);
         b->data = NULL;
     }
 
@@ -259,7 +349,7 @@ uint16_t ne_gmem_free_by_owner(NEGMemTable *tbl, uint16_t owner_task)
             continue;
 
         if (b->data) {
-            free(b->data);
+            NE_FREE(b->data);
             b->data = NULL;
         }
         memset(b, 0, sizeof(*b));
@@ -327,7 +417,7 @@ void ne_lmem_heap_free(NELMemHeap *heap)
     for (i = 0; i < NE_LMEM_HEAP_CAP; i++) {
         if (heap->blocks[i].handle != NE_LMEM_HANDLE_INVALID &&
             heap->blocks[i].data   != NULL) {
-            free(heap->blocks[i].data);
+            NE_FREE(heap->blocks[i].data);
             heap->blocks[i].data = NULL;
         }
     }
@@ -355,9 +445,9 @@ NELMemHandle ne_lmem_alloc(NELMemHeap *heap, uint16_t flags, uint16_t size)
         return NE_LMEM_HANDLE_INVALID;
 
     if (flags & NE_LMEM_ZEROINIT) {
-        buf = (uint8_t *)calloc((size_t)size, 1u);
+        buf = (uint8_t *)NE_CALLOC(1u, size);
     } else {
-        buf = (uint8_t *)malloc((size_t)size);
+        buf = (uint8_t *)NE_MALLOC(size);
     }
     if (!buf)
         return NE_LMEM_HANDLE_INVALID;
@@ -391,7 +481,7 @@ int ne_lmem_free(NELMemHeap *heap, NELMemHandle handle)
         return NE_MEM_ERR_NOT_FOUND;
 
     if (b->data) {
-        free(b->data);
+        NE_FREE(b->data);
         b->data = NULL;
     }
 
