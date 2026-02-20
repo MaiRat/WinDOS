@@ -260,12 +260,12 @@ Required by most Windows 3.1 applications for configuration.
 
 Required for correct memory management reporting and compaction.
 
-- [ ] Implement `GlobalSize` / `GlobalFlags` / `GlobalHandle`
-- [ ] Implement `LocalSize` / `LocalReAlloc` / `LocalFlags` /
+- [x] Implement `GlobalSize` / `GlobalFlags` / `GlobalHandle`
+- [x] Implement `LocalSize` / `LocalReAlloc` / `LocalFlags` /
       `LocalHandle`
-- [ ] Implement `GlobalCompact` / `LocalCompact`
-- [ ] Implement `GetFreeSpace` / `GetFreeSystemResources`
-- [ ] Implement `LockSegment` / `UnlockSegment`
+- [x] Implement `GlobalCompact` / `LocalCompact`
+- [x] Implement `GetFreeSpace` / `GetFreeSystemResources`
+- [x] Implement `LockSegment` / `UnlockSegment`
 
 ### Phase D – USER.EXE Expansion
 
