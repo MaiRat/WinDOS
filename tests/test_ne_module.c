@@ -5,9 +5,9 @@
  * dependency tracking, and unload bookkeeping correctness.
  *
  * Build with:
- *   gcc -std=c99 -Wall -Wextra -I../src ../src/ne_parser.c \
- *       ../src/ne_loader.c ../src/ne_module.c \
- *       test_ne_module.c -o test_ne_module
+ *   wcc -ml -za99 -wx -d2 -i=../src ../src/ne_parser.c ../src/ne_loader.c
+ *       ../src/ne_module.c test_ne_module.c
+ *   wlink system dos name test_ne_module.exe file test_ne_module.obj,ne_parser.obj,ne_loader.obj,ne_module.obj
  */
 
 #include "../src/ne_parser.h"
@@ -51,8 +51,8 @@ static int g_tests_failed = 0;
     do { \
         if ((a) != (b)) { \
             g_tests_failed++; \
-            printf("FAIL - expected %lld got %lld (line %d)\n", \
-                   (long long)(b), (long long)(a), __LINE__); \
+            printf("FAIL - expected %ld got %ld (line %d)\n", \
+                   (long)(b), (long)(a), __LINE__); \
             return; \
         } \
     } while (0)
@@ -61,8 +61,8 @@ static int g_tests_failed = 0;
     do { \
         if ((a) == (b)) { \
             g_tests_failed++; \
-            printf("FAIL - unexpected equal value %lld (line %d)\n", \
-                   (long long)(a), __LINE__); \
+            printf("FAIL - unexpected equal value %ld (line %d)\n", \
+                   (long)(a), __LINE__); \
             return; \
         } \
     } while (0)
