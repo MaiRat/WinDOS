@@ -2,6 +2,49 @@
 
 All notable changes to WinDOS are documented in this file.
 
+## [Unreleased] – Phase D: USER.EXE Expansion
+
+### Added
+
+- **Phase D USER.EXE APIs** (`ne_user`): 33 new USER.EXE API
+  implementations covering dialog-based applications and richer window
+  management:
+  - `MessageBox` – modal message box with MB_OK/MB_OKCANCEL/MB_YESNO/
+    MB_YESNOCANCEL styles
+  - `DialogBox` / `CreateDialog` / `EndDialog` – dialog creation and
+    lifecycle management with template support
+  - `SetCapture` / `ReleaseCapture` – mouse capture tracking
+  - `GetClientRect` / `GetWindowRect` – window rectangle queries
+  - `MoveWindow` / `SetWindowPos` – window position and size management
+  - `SetWindowText` / `GetWindowText` – window title/text management
+  - `EnableWindow` / `IsWindowEnabled` / `IsWindowVisible` – window
+    state queries and control
+  - `SetFocus` / `GetFocus` – input focus management with WM_SETFOCUS /
+    WM_KILLFOCUS notifications
+  - `InvalidateRect` / `ValidateRect` – paint invalidation
+  - `ScrollWindow` – scroll window contents (stub with repaint)
+  - `SetTimer` / `KillTimer` – timer wiring from `ne_driver` into USER
+    stubs
+  - `OpenClipboard` / `CloseClipboard` / `SetClipboardData` /
+    `GetClipboardData` – clipboard data management
+  - `CreateCaret` / `SetCaretPos` / `ShowCaret` / `HideCaret` /
+    `DestroyCaret` – caret lifecycle
+  - `GetKeyState` / `GetAsyncKeyState` – input state queries
+  - `CreateMenu` / `SetMenu` / `AppendMenu` / `GetMenu` /
+    `DestroyMenu` – menu creation and management
+
+- **New data structures**: `NEUserRect`, `NEUserMenuItem`, `NEUserMenu`,
+  `NEUserClipboard`, `NEUserCaret` for Phase D subsystem state.
+
+- **Extended window descriptor**: position (x, y), size (width, height),
+  window text, enabled state, invalidation tracking, and menu handle.
+
+- **New message identifiers**: `WM_SETFOCUS`, `WM_KILLFOCUS`,
+  `WM_ENABLE`, `WM_SETTEXT`, `WM_GETTEXT`, `WM_GETTEXTLENGTH`,
+  `WM_TIMER`, `WM_COMMAND`.
+
+- **24 new unit tests** for all Phase D APIs (46 USER tests total).
+
 ## [Unreleased] – Phase B: INI File and Profile APIs
 
 ### Added

@@ -271,23 +271,23 @@ Required for correct memory management reporting and compaction.
 
 Required for dialog-based applications and richer window management.
 
-- [ ] Implement `MessageBox`
-- [ ] Implement `DialogBox` / `CreateDialog` / `EndDialog` with full
+- [x] Implement `MessageBox`
+- [x] Implement `DialogBox` / `CreateDialog` / `EndDialog` with full
       dialog template support
-- [ ] Implement `SetCapture` / `ReleaseCapture`
-- [ ] Implement `GetClientRect` / `GetWindowRect`
-- [ ] Implement `MoveWindow` / `SetWindowPos`
-- [ ] Implement `SetWindowText` / `GetWindowText`
-- [ ] Implement `EnableWindow` / `IsWindowEnabled` / `IsWindowVisible`
-- [ ] Implement `SetFocus` / `GetFocus`
-- [ ] Implement `InvalidateRect` / `ValidateRect`
-- [ ] Implement `ScrollWindow`
-- [ ] Wire `SetTimer` / `KillTimer` from `ne_driver` into USER stubs
-- [ ] Implement clipboard APIs (`OpenClipboard`, `CloseClipboard`,
+- [x] Implement `SetCapture` / `ReleaseCapture`
+- [x] Implement `GetClientRect` / `GetWindowRect`
+- [x] Implement `MoveWindow` / `SetWindowPos`
+- [x] Implement `SetWindowText` / `GetWindowText`
+- [x] Implement `EnableWindow` / `IsWindowEnabled` / `IsWindowVisible`
+- [x] Implement `SetFocus` / `GetFocus`
+- [x] Implement `InvalidateRect` / `ValidateRect`
+- [x] Implement `ScrollWindow`
+- [x] Wire `SetTimer` / `KillTimer` from `ne_driver` into USER stubs
+- [x] Implement clipboard APIs (`OpenClipboard`, `CloseClipboard`,
       `SetClipboardData`, `GetClipboardData`)
-- [ ] Implement caret APIs (`CreateCaret`, `SetCaretPos`, `ShowCaret`)
-- [ ] Implement input state APIs (`GetKeyState`, `GetAsyncKeyState`)
-- [ ] Implement menu creation and management APIs (`CreateMenu`,
+- [x] Implement caret APIs (`CreateCaret`, `SetCaretPos`, `ShowCaret`)
+- [x] Implement input state APIs (`GetKeyState`, `GetAsyncKeyState`)
+- [x] Implement menu creation and management APIs (`CreateMenu`,
       `SetMenu`, `AppendMenu`, `GetMenu`)
 
 ### Phase E – GDI.EXE Rendering
