@@ -459,6 +459,136 @@ uint16_t ne_lmem_size(const NELMemHeap *heap, NELMemHandle handle)
 }
 
 /* =========================================================================
+ * ne_gmem_flags
+ * ===================================================================== */
+
+uint16_t ne_gmem_flags(const NEGMemTable *tbl, NEGMemHandle handle)
+{
+    uint16_t i;
+
+    if (!tbl || !tbl->blocks || handle == NE_GMEM_HANDLE_INVALID)
+        return 0;
+
+    for (i = 0; i < tbl->capacity; i++) {
+        if (tbl->blocks[i].handle == handle)
+            return tbl->blocks[i].flags;
+    }
+    return 0;
+}
+
+/* =========================================================================
+ * ne_gmem_handle
+ * ===================================================================== */
+
+NEGMemHandle ne_gmem_handle(const NEGMemTable *tbl, const void *ptr)
+{
+    uint16_t i;
+
+    if (!tbl || !tbl->blocks || !ptr)
+        return NE_GMEM_HANDLE_INVALID;
+
+    for (i = 0; i < tbl->capacity; i++) {
+        if (tbl->blocks[i].handle != NE_GMEM_HANDLE_INVALID &&
+            tbl->blocks[i].data == (const uint8_t *)ptr)
+            return tbl->blocks[i].handle;
+    }
+    return NE_GMEM_HANDLE_INVALID;
+}
+
+/* =========================================================================
+ * ne_gmem_compact
+ * ===================================================================== */
+
+uint32_t ne_gmem_compact(NEGMemTable *tbl)
+{
+    (void)tbl;
+    return 0;
+}
+
+/* =========================================================================
+ * ne_lmem_realloc
+ * ===================================================================== */
+
+NELMemHandle ne_lmem_realloc(NELMemHeap *heap, NELMemHandle handle,
+                              uint16_t new_size, uint16_t flags)
+{
+    NELMemBlock *b;
+    uint8_t     *buf;
+    uint16_t     copy_size;
+
+    (void)flags;
+
+    if (!heap || handle == NE_LMEM_HANDLE_INVALID || new_size == 0)
+        return NE_LMEM_HANDLE_INVALID;
+
+    b = lmem_find_block(heap, handle);
+    if (!b)
+        return NE_LMEM_HANDLE_INVALID;
+
+    buf = (uint8_t *)NE_MALLOC(new_size);
+    if (!buf)
+        return NE_LMEM_HANDLE_INVALID;
+
+    copy_size = (b->size < new_size) ? b->size : new_size;
+    if (b->data) {
+        memcpy(buf, b->data, copy_size);
+        NE_FREE(b->data);
+    }
+
+    b->data = buf;
+    b->size = new_size;
+
+    return handle;
+}
+
+/* =========================================================================
+ * ne_lmem_flags
+ * ===================================================================== */
+
+uint16_t ne_lmem_flags(const NELMemHeap *heap, NELMemHandle handle)
+{
+    uint16_t i;
+
+    if (!heap || handle == NE_LMEM_HANDLE_INVALID)
+        return 0;
+
+    for (i = 0; i < NE_LMEM_HEAP_CAP; i++) {
+        if (heap->blocks[i].handle == handle)
+            return heap->blocks[i].flags;
+    }
+    return 0;
+}
+
+/* =========================================================================
+ * ne_lmem_handle
+ * ===================================================================== */
+
+NELMemHandle ne_lmem_handle(const NELMemHeap *heap, const void *ptr)
+{
+    uint16_t i;
+
+    if (!heap || !ptr)
+        return NE_LMEM_HANDLE_INVALID;
+
+    for (i = 0; i < NE_LMEM_HEAP_CAP; i++) {
+        if (heap->blocks[i].handle != NE_LMEM_HANDLE_INVALID &&
+            heap->blocks[i].data == (const uint8_t *)ptr)
+            return heap->blocks[i].handle;
+    }
+    return NE_LMEM_HANDLE_INVALID;
+}
+
+/* =========================================================================
+ * ne_lmem_compact
+ * ===================================================================== */
+
+uint16_t ne_lmem_compact(NELMemHeap *heap)
+{
+    (void)heap;
+    return 0;
+}
+
+/* =========================================================================
  * ne_mem_strerror
  * ===================================================================== */
 
