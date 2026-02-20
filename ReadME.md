@@ -11,25 +11,25 @@ This roadmap breaks the work into small milestones to implement a full Windows 3
 
 ### Step-by-step plan
 1. **NE-file parser**
-   - [ ] Read and document the NE executable format specification (header layout, table structures).
-   - [ ] Implement parsing of the NE file header (magic bytes, linker version, offsets).
-   - [ ] Implement parsing of the segment table (segment descriptors, flags, sizes).
-   - [ ] Implement parsing of the resource table, imported names table, and entry table.
-   - [ ] Validate magic values (`NE` signature) and reject invalid files with clear errors.
-   - [ ] Validate segment count, entry-point offsets, and required table offsets.
-   - [ ] Write unit tests using representative NE binary samples (e.g. stock Windows 3.1 DLLs).
-   - [ ] Expose a clean API for querying parsed metadata (segments, exports, entry point).
-   - [ ] Deliverable: a standalone parser module that can print or expose parsed metadata.
+   - [x] Read and document the NE executable format specification (header layout, table structures).
+   - [x] Implement parsing of the NE file header (magic bytes, linker version, offsets).
+   - [x] Implement parsing of the segment table (segment descriptors, flags, sizes).
+   - [x] Implement parsing of the resource table, imported names table, and entry table.
+   - [x] Validate magic values (`NE` signature) and reject invalid files with clear errors.
+   - [x] Validate segment count, entry-point offsets, and required table offsets.
+   - [x] Write unit tests using representative NE binary samples (e.g. stock Windows 3.1 DLLs).
+   - [x] Expose a clean API for querying parsed metadata (segments, exports, entry point).
+   - [x] Deliverable: a standalone parser module that can print or expose parsed metadata.
 
 2. **NE-file loader**
-   - [ ] Allocate DOS conventional/extended memory regions for each NE segment.
-   - [ ] Load code and data segments from file into allocated memory according to segment descriptors.
-   - [ ] Respect segment alignment requirements and honor segment flags (read/write/execute).
-   - [ ] Handle the case where available memory is insufficient and report diagnostics.
-   - [ ] Add loader diagnostics for segment placement addresses and load failures.
-   - [ ] Verify entry-point offset is within bounds after loading.
-   - [ ] Write integration tests confirming correct segment placement for known NE files.
-   - [ ] Deliverable: executable image mapped in memory with basic entry readiness.
+   - [x] Allocate DOS conventional/extended memory regions for each NE segment.
+   - [x] Load code and data segments from file into allocated memory according to segment descriptors.
+   - [x] Respect segment alignment requirements and honor segment flags (read/write/execute).
+   - [x] Handle the case where available memory is insufficient and report diagnostics.
+   - [x] Add loader diagnostics for segment placement addresses and load failures.
+   - [x] Verify entry-point offset is within bounds after loading.
+   - [x] Write integration tests confirming correct segment placement for known NE files.
+   - [x] Deliverable: executable image mapped in memory with basic entry readiness.
 
 3. **Relocation management**
    - [x] Parse the relocation records for each loaded segment.
@@ -105,6 +105,10 @@ This roadmap breaks the work into small milestones to implement a full Windows 3
    - [x] Produce a release checklist covering build steps, test steps, and sign-off criteria.
    - [x] Verify reproducible builds produce bit-identical output across clean environments.
    - [x] Deliverable: fully replaceable kernel path for WinDOS with documented constraints.
+
+### Remaining work
+
+For a detailed assessment of gaps, missing functionalities, and the phased plan to achieve full Windows 3.1 kernel replacement status, see **[ROADMAP.md](ROADMAP.md)**.
 
 ### Tracking and execution notes
 - Create dedicated sub-issues per step for:
