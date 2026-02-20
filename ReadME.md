@@ -32,14 +32,14 @@ This roadmap breaks the work into small milestones to implement a full Windows 3
    - [ ] Deliverable: executable image mapped in memory with basic entry readiness.
 
 3. **Relocation management**
-   - [ ] Parse the relocation records for each loaded segment.
-   - [ ] Apply internal relocations (intra-module segment/offset fixups).
-   - [ ] Apply imported-reference relocations (cross-module symbol fixups).
-   - [ ] Handle OS-fixup record types required by Windows 3.1 runtime.
-   - [ ] Report and fail gracefully on unresolvable relocation targets.
-   - [ ] Write verification tests for pointer fixups and segment selector fixups.
-   - [ ] Write verification tests for imported reference resolution against a dummy module.
-   - [ ] Deliverable: correctly relocated module image.
+   - [x] Parse the relocation records for each loaded segment.
+   - [x] Apply internal relocations (intra-module segment/offset fixups).
+   - [x] Apply imported-reference relocations (cross-module symbol fixups).
+   - [x] Handle OS-fixup record types required by Windows 3.1 runtime.
+   - [x] Report and fail gracefully on unresolvable relocation targets.
+   - [x] Write verification tests for pointer fixups and segment selector fixups.
+   - [x] Write verification tests for imported reference resolution against a dummy module.
+   - [x] Deliverable: correctly relocated module image.
 
 4. **Module table handling**
    - [ ] Design and implement the global module table data structure.
