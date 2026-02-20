@@ -63,6 +63,9 @@ USER_OBJ       := $(BUILD_DIR)/ne_user.obj
 GDI_SRC        := $(SRC_DIR)/ne_gdi.c
 GDI_OBJ        := $(BUILD_DIR)/ne_gdi.obj
 
+DRIVER_SRC     := $(SRC_DIR)/ne_driver.c
+DRIVER_OBJ     := $(BUILD_DIR)/ne_driver.obj
+
 TEST_SRC         := $(TEST_DIR)/test_ne_parser.c
 TEST_OBJ         := $(BUILD_DIR)/test_ne_parser.obj
 TEST_BIN         := $(BUILD_DIR)/test_ne_parser.exe
@@ -111,9 +114,13 @@ GDI_TEST_SRC        := $(TEST_DIR)/test_ne_gdi.c
 GDI_TEST_OBJ        := $(BUILD_DIR)/test_ne_gdi.obj
 GDI_TEST_BIN        := $(BUILD_DIR)/test_ne_gdi.exe
 
+DRIVER_TEST_SRC     := $(TEST_DIR)/test_ne_driver.c
+DRIVER_TEST_OBJ     := $(BUILD_DIR)/test_ne_driver.obj
+DRIVER_TEST_BIN     := $(BUILD_DIR)/test_ne_driver.exe
+
 .PHONY: all test clean
 
-all: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN) $(INTEGRATE_TEST_BIN) $(FULLINTEG_TEST_BIN) $(KERNEL_TEST_BIN) $(USER_TEST_BIN) $(GDI_TEST_BIN)
+all: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN) $(INTEGRATE_TEST_BIN) $(FULLINTEG_TEST_BIN) $(KERNEL_TEST_BIN) $(USER_TEST_BIN) $(GDI_TEST_BIN) $(DRIVER_TEST_BIN)
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
@@ -157,6 +164,9 @@ $(USER_OBJ): $(USER_SRC) $(SRC_DIR)/ne_user.h | $(BUILD_DIR)
 $(GDI_OBJ): $(GDI_SRC) $(SRC_DIR)/ne_gdi.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
+$(DRIVER_OBJ): $(DRIVER_SRC) $(SRC_DIR)/ne_driver.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -fo=$@ $<
+
 $(TEST_OBJ): $(TEST_SRC) $(SRC_DIR)/ne_parser.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
@@ -191,6 +201,9 @@ $(USER_TEST_OBJ): $(USER_TEST_SRC) $(SRC_DIR)/ne_user.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
 $(GDI_TEST_OBJ): $(GDI_TEST_SRC) $(SRC_DIR)/ne_gdi.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -fo=$@ $<
+
+$(DRIVER_TEST_OBJ): $(DRIVER_TEST_SRC) $(SRC_DIR)/ne_driver.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
 $(TEST_BIN): $(TEST_OBJ) $(PARSER_OBJ) | $(BUILD_DIR)
@@ -229,7 +242,10 @@ $(USER_TEST_BIN): $(USER_TEST_OBJ) $(USER_OBJ) | $(BUILD_DIR)
 $(GDI_TEST_BIN): $(GDI_TEST_OBJ) $(GDI_OBJ) | $(BUILD_DIR)
 	$(LD) $(LDFLAGS) name $@ file $(GDI_TEST_OBJ),$(GDI_OBJ)
 
-test: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN) $(INTEGRATE_TEST_BIN) $(FULLINTEG_TEST_BIN) $(KERNEL_TEST_BIN) $(USER_TEST_BIN) $(GDI_TEST_BIN)
+$(DRIVER_TEST_BIN): $(DRIVER_TEST_OBJ) $(DRIVER_OBJ) | $(BUILD_DIR)
+	$(LD) $(LDFLAGS) name $@ file $(DRIVER_TEST_OBJ),$(DRIVER_OBJ)
+
+test: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN) $(INTEGRATE_TEST_BIN) $(FULLINTEG_TEST_BIN) $(KERNEL_TEST_BIN) $(USER_TEST_BIN) $(GDI_TEST_BIN) $(DRIVER_TEST_BIN)
 	@echo "--- Running NE parser tests ---"
 	$(TEST_BIN)
 	@echo "--- Running NE loader tests ---"
@@ -254,6 +270,8 @@ test: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPE
 	$(USER_TEST_BIN)
 	@echo "--- Running GDI.EXE subsystem tests ---"
 	$(GDI_TEST_BIN)
+	@echo "--- Running Device Driver tests ---"
+	$(DRIVER_TEST_BIN)
 
 clean:
 	rm -rf $(BUILD_DIR)
@@ -310,6 +328,9 @@ host-test: | $(BUILD_DIR)
 	@echo "--- GDI.EXE subsystem ---"
 	$(HOST_CC) $(HOST_CFLAGS) $(SRC_DIR)/ne_gdi.c $(TEST_DIR)/test_ne_gdi.c -o $(BUILD_DIR)/host_test_gdi
 	$(BUILD_DIR)/host_test_gdi
+	@echo "--- Device drivers ---"
+	$(HOST_CC) $(HOST_CFLAGS) $(SRC_DIR)/ne_driver.c $(TEST_DIR)/test_ne_driver.c -o $(BUILD_DIR)/host_test_driver
+	$(BUILD_DIR)/host_test_driver
 	@echo "=== All host tests passed ==="
 
 host-clean:
