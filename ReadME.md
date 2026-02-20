@@ -52,15 +52,15 @@ This roadmap breaks the work into small milestones to implement a full Windows 3
    - [x] Deliverable: stable module lifecycle management.
 
 5. **Import/export resolution**
-   - [ ] Build per-module export tables indexed by ordinal number.
-   - [ ] Build per-module export tables indexed by name for name-based lookups.
-   - [ ] Implement ordinal-based import resolution against loaded module export tables.
-   - [ ] Implement name-based import resolution against loaded module export tables.
-   - [ ] Register temporary API stubs for imports whose target module is not yet loaded.
-   - [ ] Maintain a shared stub-tracking table (module/API name, owner step, behavior, replacement milestone, removal status).
-   - [ ] Replace stubs with real addresses as target modules are loaded.
-   - [ ] Write tests covering ordinal resolution, name resolution, and stub fallback paths.
-   - [ ] Deliverable: inter-module calls resolving through a central linker/runtime path.
+   - [x] Build per-module export tables indexed by ordinal number.
+   - [x] Build per-module export tables indexed by name for name-based lookups.
+   - [x] Implement ordinal-based import resolution against loaded module export tables.
+   - [x] Implement name-based import resolution against loaded module export tables.
+   - [x] Register temporary API stubs for imports whose target module is not yet loaded.
+   - [x] Maintain a shared stub-tracking table (module/API name, owner step, behavior, replacement milestone, removal status).
+   - [x] Replace stubs with real addresses as target modules are loaded.
+   - [x] Write tests covering ordinal resolution, name resolution, and stub fallback paths.
+   - [x] Deliverable: inter-module calls resolving through a central linker/runtime path.
 
 6. **Task and memory management**
    - [ ] Define the task descriptor structure (stack, registers, state, priority).
