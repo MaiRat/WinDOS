@@ -11,58 +11,100 @@ This roadmap breaks the work into small milestones to implement a full Windows 3
 
 ### Step-by-step plan
 1. **NE-file parser**
-   - Parse Windows 3.1 NE headers and table offsets.
-   - Validate magic values, segment counts, and entry points.
-   - Add parser tests using representative NE samples.
-   - Deliverable: a standalone parser module that can print or expose parsed metadata.
+   - [ ] Read and document the NE executable format specification (header layout, table structures).
+   - [ ] Implement parsing of the NE file header (magic bytes, linker version, offsets).
+   - [ ] Implement parsing of the segment table (segment descriptors, flags, sizes).
+   - [ ] Implement parsing of the resource table, imported names table, and entry table.
+   - [ ] Validate magic values (`NE` signature) and reject invalid files with clear errors.
+   - [ ] Validate segment count, entry-point offsets, and required table offsets.
+   - [ ] Write unit tests using representative NE binary samples (e.g. stock Windows 3.1 DLLs).
+   - [ ] Expose a clean API for querying parsed metadata (segments, exports, entry point).
+   - [ ] Deliverable: a standalone parser module that can print or expose parsed metadata.
 
 2. **NE-file loader**
-   - Load NE segments into DOS memory according to segment descriptors.
-   - Respect alignment requirements and segment flags.
-   - Add loader diagnostics for segment placement and load failures.
-   - Deliverable: executable image mapped in memory with basic entry readiness.
+   - [ ] Allocate DOS conventional/extended memory regions for each NE segment.
+   - [ ] Load code and data segments from file into allocated memory according to segment descriptors.
+   - [ ] Respect segment alignment requirements and honor segment flags (read/write/execute).
+   - [ ] Handle the case where available memory is insufficient and report diagnostics.
+   - [ ] Add loader diagnostics for segment placement addresses and load failures.
+   - [ ] Verify entry-point offset is within bounds after loading.
+   - [ ] Write integration tests confirming correct segment placement for known NE files.
+   - [ ] Deliverable: executable image mapped in memory with basic entry readiness.
 
 3. **Relocation management**
-   - Parse and apply relocation records for loaded segments.
-   - Support internal and imported reference relocation paths.
-   - Add verification tests for pointer/segment fixups.
-   - Deliverable: correctly relocated module image.
+   - [ ] Parse the relocation records for each loaded segment.
+   - [ ] Apply internal relocations (intra-module segment/offset fixups).
+   - [ ] Apply imported-reference relocations (cross-module symbol fixups).
+   - [ ] Handle OS-fixup record types required by Windows 3.1 runtime.
+   - [ ] Report and fail gracefully on unresolvable relocation targets.
+   - [ ] Write verification tests for pointer fixups and segment selector fixups.
+   - [ ] Write verification tests for imported reference resolution against a dummy module.
+   - [ ] Deliverable: correctly relocated module image.
 
 4. **Module table handling**
-   - Implement a global module table for loaded NE modules.
-   - Track module handles, reference counts, and dependencies.
-   - Add load/unload bookkeeping and duplicate-load protection.
-   - Deliverable: stable module lifecycle management.
+   - [ ] Design and implement the global module table data structure.
+   - [ ] Assign and track unique module handles for each loaded NE module.
+   - [ ] Implement reference counting for module load/unload lifecycle.
+   - [ ] Record inter-module dependencies to enforce correct unload ordering.
+   - [ ] Implement duplicate-load detection and return existing handle on re-load.
+   - [ ] Implement module unload path including reference count decrement and memory release.
+   - [ ] Write tests for load, duplicate-load, and unload bookkeeping correctness.
+   - [ ] Deliverable: stable module lifecycle management.
 
 5. **Import/export resolution**
-   - Resolve imported symbols against loaded module exports.
-   - Build export lookup structures (name + ordinal support).
-   - Provide temporary API stubs for unresolved imports to unblock bring-up; track each stub in a TODO map with owning step and expected replacement milestone.
-   - Deliverable: inter-module calls resolving through a central linker/runtime path.
+   - [ ] Build per-module export tables indexed by ordinal number.
+   - [ ] Build per-module export tables indexed by name for name-based lookups.
+   - [ ] Implement ordinal-based import resolution against loaded module export tables.
+   - [ ] Implement name-based import resolution against loaded module export tables.
+   - [ ] Register temporary API stubs for imports whose target module is not yet loaded.
+   - [ ] Maintain a shared stub-tracking table (module/API name, owner step, behavior, replacement milestone, removal status).
+   - [ ] Replace stubs with real addresses as target modules are loaded.
+   - [ ] Write tests covering ordinal resolution, name resolution, and stub fallback paths.
+   - [ ] Deliverable: inter-module calls resolving through a central linker/runtime path.
 
 6. **Task and memory management**
-   - Introduce basic task descriptors, scheduling hooks, and context-switch flow.
-   - Implement Windows 3.1-compatible memory primitives and allocation regions.
-   - Validate task startup/teardown paths and memory ownership.
-   - Deliverable: minimal multitasking runtime with deterministic memory behavior.
+   - [ ] Define the task descriptor structure (stack, registers, state, priority).
+   - [ ] Implement task creation with stack allocation and initial context setup.
+   - [ ] Implement a cooperative scheduling loop and yield/switch hooks.
+   - [ ] Implement context-save and context-restore routines for task switching.
+   - [ ] Implement Windows 3.1-compatible global memory allocation (GMEM) primitives.
+   - [ ] Implement local memory allocation (LMEM) primitives per task heap.
+   - [ ] Track memory ownership per task and enforce cleanup on task termination.
+   - [ ] Validate task startup path (entry called, stack correct) and teardown path (resources freed).
+   - [ ] Write tests for task create/switch/destroy and memory alloc/free correctness.
+   - [ ] Deliverable: minimal multitasking runtime with deterministic memory behavior.
 
 7. **Exception and trap handling**
-   - Install exception/trap handlers required for kernel runtime stability.
-   - Route faults to diagnostic handlers with safe recovery where possible.
-   - Define panic/fatal-error behavior for unrecoverable conditions.
-   - Deliverable: predictable fault handling and improved debugging visibility.
+   - [ ] Identify all CPU exception/trap vectors needed for kernel operation (GP fault, stack fault, etc.).
+   - [ ] Install low-level interrupt/trap handler stubs for each required vector.
+   - [ ] Route each exception to a C-level diagnostic handler with register context.
+   - [ ] Implement safe recovery paths for recoverable faults (e.g. page not present stubs).
+   - [ ] Define and implement the panic/fatal-error handler for unrecoverable conditions.
+   - [ ] Add logging of fault address, exception code, and register state to diagnostic output.
+   - [ ] Write tests that deliberately trigger handled faults and verify correct handler dispatch.
+   - [ ] Deliverable: predictable fault handling and improved debugging visibility.
 
 8. **Integration steps**
-   - Integrate kernel services incrementally with GUI, drivers, and system DLL interactions.
-   - Gate each integration stage behind compatibility tests in DOS environment.
-   - Track regressions by subsystem and keep fallback paths during migration.
-   - Deliverable: staged compatibility across core Windows 3.1 subsystems.
+   - [ ] Identify the minimal set of kernel services needed by the Windows 3.1 GUI layer.
+   - [ ] Integrate kernel services with the display/GUI layer incrementally, one subsystem at a time.
+   - [ ] Integrate kernel services with device drivers (keyboard, timer, display).
+   - [ ] Integrate with system DLLs (KERNEL.EXE, USER.EXE, GDI.EXE) interfaces.
+   - [ ] Write compatibility tests in the DOS environment for each integration stage before proceeding.
+   - [ ] Gate promotion to the next stage on all prior-stage compatibility tests passing.
+   - [ ] Track regressions per subsystem and document fallback/bypass paths during migration.
+   - [ ] Document integration status, known gaps, and workarounds per subsystem.
+   - [ ] Deliverable: staged compatibility across core Windows 3.1 subsystems.
 
 9. **Full integration**
-   - Complete end-to-end boot and runtime validation with the custom kernel.
-   - Document test procedures, known limitations, and supported configurations.
-   - Produce a release checklist for reproducible build + verification.
-   - Deliverable: fully replaceable kernel path for WinDOS with documented constraints.
+   - [ ] Perform end-to-end boot sequence validation with the custom kernel replacing the original.
+   - [ ] Validate full runtime stability across all integrated subsystems under normal workloads.
+   - [ ] Execute regression suite covering all prior steps and confirm no regressions.
+   - [ ] Document the complete test procedure for reproducible verification.
+   - [ ] Document all known limitations, unsupported configurations, and deferred work.
+   - [ ] Document supported configurations and minimum hardware/emulator requirements.
+   - [ ] Produce a release checklist covering build steps, test steps, and sign-off criteria.
+   - [ ] Verify reproducible builds produce bit-identical output across clean environments.
+   - [ ] Deliverable: fully replaceable kernel path for WinDOS with documented constraints.
 
 ### Tracking and execution notes
 - Create dedicated sub-issues per step for:
