@@ -5,7 +5,9 @@ This roadmap breaks the work into small milestones to implement a full Windows 3
 
 ### Assumptions
 - A working DOS 16-bit environment is already available.
-- A Watcom-compatible compiler toolchain is available.
+- A WATCOM-compatible compiler toolchain is available.
+- Target runtime is DOS 5.0+ with enough conventional/extended memory for Windows 3.1 modules.
+- Standard low-level tooling (assembler/linker/debugger) is available for bring-up diagnostics.
 
 ### Step-by-step plan
 1. **NE-file parser**
@@ -35,7 +37,7 @@ This roadmap breaks the work into small milestones to implement a full Windows 3
 5. **Import/export resolution**
    - Resolve imported symbols against loaded module exports.
    - Build export lookup structures (name + ordinal support).
-   - Provide temporary API stubs for unresolved imports to unblock bring-up.
+   - Provide temporary API stubs for unresolved imports to unblock bring-up; track each stub in a TODO map with owning step and expected replacement milestone.
    - Deliverable: inter-module calls resolving through a central linker/runtime path.
 
 6. **Task and memory management**
@@ -67,5 +69,9 @@ This roadmap breaks the work into small milestones to implement a full Windows 3
   - Implementation tasks
   - Test coverage tasks
   - Documentation updates
+- Use a consistent issue naming format: `Step <N>: <component> - <goal>`.
+- Example naming: `Step 1: NE-parser - Validate magic values`.
+- Define done criteria per sub-issue (code merged, tests passing, docs updated).
+- Track temporary API stubs in a shared table with: module/API name, owner step, behavior, replacement milestone, and removal status.
 - Use milestone reviews after each step before proceeding.
 - Publish regular progress updates with blockers, risks, and next actions.
