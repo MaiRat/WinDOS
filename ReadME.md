@@ -75,14 +75,14 @@ This roadmap breaks the work into small milestones to implement a full Windows 3
    - [x] Deliverable: minimal multitasking runtime with deterministic memory behavior.
 
 7. **Exception and trap handling**
-   - [ ] Identify all CPU exception/trap vectors needed for kernel operation (GP fault, stack fault, etc.).
-   - [ ] Install low-level interrupt/trap handler stubs for each required vector.
-   - [ ] Route each exception to a C-level diagnostic handler with register context.
-   - [ ] Implement safe recovery paths for recoverable faults (e.g. page not present stubs).
-   - [ ] Define and implement the panic/fatal-error handler for unrecoverable conditions.
-   - [ ] Add logging of fault address, exception code, and register state to diagnostic output.
-   - [ ] Write tests that deliberately trigger handled faults and verify correct handler dispatch.
-   - [ ] Deliverable: predictable fault handling and improved debugging visibility.
+   - [x] Identify all CPU exception/trap vectors needed for kernel operation (GP fault, stack fault, etc.).
+   - [x] Install low-level interrupt/trap handler stubs for each required vector.
+   - [x] Route each exception to a C-level diagnostic handler with register context.
+   - [x] Implement safe recovery paths for recoverable faults (e.g. page not present stubs).
+   - [x] Define and implement the panic/fatal-error handler for unrecoverable conditions.
+   - [x] Add logging of fault address, exception code, and register state to diagnostic output.
+   - [x] Write tests that deliberately trigger handled faults and verify correct handler dispatch.
+   - [x] Deliverable: predictable fault handling and improved debugging visibility.
 
 8. **Integration steps**
    - [ ] Identify the minimal set of kernel services needed by the Windows 3.1 GUI layer.
