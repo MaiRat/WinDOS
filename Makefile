@@ -1,4 +1,4 @@
-# Makefile for WinDOS NE-file parser
+# Makefile for WinDOS NE-file kernel replacement modules
 #
 # Targets:
 #   all      - build the parser library and test binaries
@@ -39,6 +39,12 @@ MODULE_OBJ  := $(BUILD_DIR)/ne_module.obj
 IMPEXP_SRC  := $(SRC_DIR)/ne_impexp.c
 IMPEXP_OBJ  := $(BUILD_DIR)/ne_impexp.obj
 
+TASK_SRC    := $(SRC_DIR)/ne_task.c
+TASK_OBJ    := $(BUILD_DIR)/ne_task.obj
+
+MEM_SRC     := $(SRC_DIR)/ne_mem.c
+MEM_OBJ     := $(BUILD_DIR)/ne_mem.obj
+
 TEST_SRC         := $(TEST_DIR)/test_ne_parser.c
 TEST_OBJ         := $(BUILD_DIR)/test_ne_parser.obj
 TEST_BIN         := $(BUILD_DIR)/test_ne_parser.exe
@@ -59,9 +65,13 @@ IMPEXP_TEST_SRC  := $(TEST_DIR)/test_ne_impexp.c
 IMPEXP_TEST_OBJ  := $(BUILD_DIR)/test_ne_impexp.obj
 IMPEXP_TEST_BIN  := $(BUILD_DIR)/test_ne_impexp.exe
 
+TASK_TEST_SRC    := $(TEST_DIR)/test_ne_task.c
+TASK_TEST_OBJ    := $(BUILD_DIR)/test_ne_task.obj
+TASK_TEST_BIN    := $(BUILD_DIR)/test_ne_task.exe
+
 .PHONY: all test clean
 
-all: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN)
+all: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN)
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
@@ -81,6 +91,12 @@ $(MODULE_OBJ): $(MODULE_SRC) $(SRC_DIR)/ne_module.h $(SRC_DIR)/ne_loader.h $(SRC
 $(IMPEXP_OBJ): $(IMPEXP_SRC) $(SRC_DIR)/ne_impexp.h $(SRC_DIR)/ne_parser.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
+$(TASK_OBJ): $(TASK_SRC) $(SRC_DIR)/ne_task.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -fo=$@ $<
+
+$(MEM_OBJ): $(MEM_SRC) $(SRC_DIR)/ne_mem.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -fo=$@ $<
+
 $(TEST_OBJ): $(TEST_SRC) $(SRC_DIR)/ne_parser.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
@@ -94,6 +110,9 @@ $(MODULE_TEST_OBJ): $(MODULE_TEST_SRC) $(SRC_DIR)/ne_module.h $(SRC_DIR)/ne_load
 	$(CC) $(CFLAGS) -fo=$@ $<
 
 $(IMPEXP_TEST_OBJ): $(IMPEXP_TEST_SRC) $(SRC_DIR)/ne_impexp.h $(SRC_DIR)/ne_parser.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -fo=$@ $<
+
+$(TASK_TEST_OBJ): $(TASK_TEST_SRC) $(SRC_DIR)/ne_task.h $(SRC_DIR)/ne_mem.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
 $(TEST_BIN): $(TEST_OBJ) $(PARSER_OBJ) | $(BUILD_DIR)
@@ -111,7 +130,10 @@ $(MODULE_TEST_BIN): $(MODULE_TEST_OBJ) $(PARSER_OBJ) $(LOADER_OBJ) $(MODULE_OBJ)
 $(IMPEXP_TEST_BIN): $(IMPEXP_TEST_OBJ) $(PARSER_OBJ) $(IMPEXP_OBJ) | $(BUILD_DIR)
 	$(LD) $(LDFLAGS) name $@ file $(IMPEXP_TEST_OBJ),$(PARSER_OBJ),$(IMPEXP_OBJ)
 
-test: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN)
+$(TASK_TEST_BIN): $(TASK_TEST_OBJ) $(TASK_OBJ) $(MEM_OBJ) | $(BUILD_DIR)
+	$(LD) $(LDFLAGS) name $@ file $(TASK_TEST_OBJ),$(TASK_OBJ),$(MEM_OBJ)
+
+test: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN)
 	@echo "--- Running NE parser tests ---"
 	$(TEST_BIN)
 	@echo "--- Running NE loader tests ---"
@@ -122,6 +144,8 @@ test: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPE
 	$(MODULE_TEST_BIN)
 	@echo "--- Running NE import/export resolution tests ---"
 	$(IMPEXP_TEST_BIN)
+	@echo "--- Running NE task and memory management tests ---"
+	$(TASK_TEST_BIN)
 
 clean:
 	rm -rf $(BUILD_DIR)

@@ -63,16 +63,16 @@ This roadmap breaks the work into small milestones to implement a full Windows 3
    - [x] Deliverable: inter-module calls resolving through a central linker/runtime path.
 
 6. **Task and memory management**
-   - [ ] Define the task descriptor structure (stack, registers, state, priority).
-   - [ ] Implement task creation with stack allocation and initial context setup.
-   - [ ] Implement a cooperative scheduling loop and yield/switch hooks.
-   - [ ] Implement context-save and context-restore routines for task switching.
-   - [ ] Implement Windows 3.1-compatible global memory allocation (GMEM) primitives.
-   - [ ] Implement local memory allocation (LMEM) primitives per task heap.
-   - [ ] Track memory ownership per task and enforce cleanup on task termination.
-   - [ ] Validate task startup path (entry called, stack correct) and teardown path (resources freed).
-   - [ ] Write tests for task create/switch/destroy and memory alloc/free correctness.
-   - [ ] Deliverable: minimal multitasking runtime with deterministic memory behavior.
+   - [x] Define the task descriptor structure (stack, registers, state, priority).
+   - [x] Implement task creation with stack allocation and initial context setup.
+   - [x] Implement a cooperative scheduling loop and yield/switch hooks.
+   - [x] Implement context-save and context-restore routines for task switching.
+   - [x] Implement Windows 3.1-compatible global memory allocation (GMEM) primitives.
+   - [x] Implement local memory allocation (LMEM) primitives per task heap.
+   - [x] Track memory ownership per task and enforce cleanup on task termination.
+   - [x] Validate task startup path (entry called, stack correct) and teardown path (resources freed).
+   - [x] Write tests for task create/switch/destroy and memory alloc/free correctness.
+   - [x] Deliverable: minimal multitasking runtime with deterministic memory behavior.
 
 7. **Exception and trap handling**
    - [ ] Identify all CPU exception/trap vectors needed for kernel operation (GP fault, stack fault, etc.).
