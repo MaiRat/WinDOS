@@ -2,6 +2,51 @@
 
 All notable changes to WinDOS are documented in this file.
 
+## [Unreleased] – Phase H: Protected-Mode (DPMI) Support
+
+### Added
+
+- **Phase H DPMI Support** (`ne_dpmi`): Minimal DPMI server and
+  protected-mode infrastructure for Windows 3.1 Standard and Enhanced
+  mode applications:
+  - DPMI server (INT 31h) with start/stop lifecycle and function
+    dispatch for all supported DPMI functions
+  - Selector allocation and management: `ne_dpmi_alloc_selector`,
+    `ne_dpmi_free_selector`, `ne_dpmi_change_selector` with LDT-style
+    selector values and code/data type toggling
+  - Descriptor table management: `ne_dpmi_get_descriptor`,
+    `ne_dpmi_set_descriptor`, `ne_dpmi_set_segment_base`,
+    `ne_dpmi_get_segment_base`, `ne_dpmi_set_segment_limit` with full
+    8-byte descriptor support (base, limit, access rights, flags)
+  - Extended memory access via DPMI: `ne_dpmi_alloc_ext_memory`,
+    `ne_dpmi_free_ext_memory`, `ne_dpmi_resize_ext_memory` with
+    handle-based block tracking and linear address assignment above
+    the 1 MB boundary
+  - INT 31h function dispatch covering: Allocate LDT Descriptors
+    (0000h), Free LDT Descriptor (0001h), Segment to Descriptor
+    (0002h), Get Selector Increment (0003h), Get Descriptor (000Bh),
+    Set Descriptor (000Ch), Get DPMI Version (0400h), Allocate Memory
+    Block (0501h), Free Memory Block (0502h), Resize Memory Block
+    (0503h)
+  - DPMI version 0.9 reported to clients
+  - Dual-target support: Watcom/DOS INT 31h vector installation with
+    saved/restored original handler; POSIX host simulation via
+    in-memory tables
+
+- **New data structures**: `NEDpmiDescriptor`, `NEDpmiSelectorEntry`,
+  `NEDpmiExtBlock`, `NEDpmiContext` for the complete DPMI subsystem.
+
+- **40 new unit tests** for all Phase H APIs covering init/free,
+  server lifecycle, version query, selector allocation/free/change,
+  descriptor get/set/base/limit, extended memory alloc/free/resize,
+  INT 31h dispatch for all function codes, and error paths.
+
+### Changed
+
+- Updated Makefile to include `ne_dpmi` module in both Watcom and
+  host-test builds.
+- Marked all Phase H items complete in KERNEL_ASSESSMENT.md.
+
 ## [Unreleased] – Phase G: KERNEL Resource Stub Wiring
 
 ### Added

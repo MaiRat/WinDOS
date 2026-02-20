@@ -330,13 +330,13 @@ Connect the existing `ne_resource` module to the KERNEL API stubs.
 
 Required for Windows 3.1 Standard and Enhanced mode applications.
 
-- [ ] Implement a minimal DPMI server (INT 31h) for 16-bit protected
+- [x] Implement a minimal DPMI server (INT 31h) for 16-bit protected
       mode
-- [ ] Implement selector allocation and management (`AllocSelector`,
+- [x] Implement selector allocation and management (`AllocSelector`,
       `FreeSelector`, `ChangeSelector`)
-- [ ] Implement extended memory access via DPMI
-- [ ] Implement descriptor table management
-- [ ] Test with Standard-mode Windows 3.1 applications
+- [x] Implement extended memory access via DPMI
+- [x] Implement descriptor table management
+- [x] Test with Standard-mode Windows 3.1 applications
 
 ### Phase I – Additional Subsystems
 
