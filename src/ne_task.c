@@ -187,9 +187,20 @@ static void __far task_trampoline_dos(void)
     NETaskDescriptor *task;
 
     /* BP was pushed by the compiler prologue; the two far pointers sit
-     * just above the return address that got us here.  In practice the
-     * context-restore code jumps straight to this function with the
-     * pointers already on the stack.  We retrieve them via BP.           */
+     * just above the return address that got us here.
+     *
+     * Watcom large-model __far function stack frame layout:
+     *   [BP+0]  = saved BP from prologue
+     *   [BP+2]  = return IP  (far call)
+     *   [BP+4]  = return CS  (far call)
+     *   [BP+6]  = tbl offset  (1st far-ptr arg, pushed by context_init)
+     *   [BP+8]  = tbl segment
+     *   [BP+10] = task offset (2nd far-ptr arg)
+     *   [BP+12] = task segment
+     *
+     * These offsets are determined by the Watcom large-model calling
+     * convention (parameters pushed right-to-left, far call pushes
+     * CS:IP, prologue pushes BP).                                        */
     _asm {
         mov ax, word ptr [bp+6]     /* tbl (offset)  */
         mov dx, word ptr [bp+8]     /* tbl (segment) */
@@ -267,10 +278,15 @@ static int ne_task_context_init(NETaskTable      *tbl,
 
     /*
      * Point to the top of the stack buffer and work downward.
-     * In the large model stack_base is a far pointer.
+     * In the large model stack_base is a far pointer returned by DOS
+     * INT 21h AH=48h, which gives us a segment base.  SS will be set to
+     * this segment and SP to an offset within it.  The stack spans from
+     * offset 0 to offset (stack_size - 1) within this segment, so SP
+     * starts at stack_size (top of the buffer, 16-bit aligned) and
+     * grows downward toward 0.
      */
     seg = FP_SEG(task->stack_base);
-    /* Start SP at the very top, 16-bit aligned. */
+    /* SP starts at the top of the allocated buffer, 16-bit aligned. */
     new_sp = (task->stack_size) & 0xFFFEu;
 
     stk = (uint16_t __far *)MK_FP(seg, 0);
@@ -496,12 +512,17 @@ void ne_task_yield(NETaskTable *tbl)
 
     _asm {
         /* ----- save task context ------------------------------------ */
+        /* Preserve the original BX on the stack before clobbering it. */
+        push bx
+
         les bx, dword ptr task         /* ES:BX -> task descriptor      */
         /* ctx is at a known offset inside NETaskDescriptor; the offset
          * covers handle(2)+state(1)+priority(1) = 4 bytes.             */
         add bx, 4                      /* BX now -> task->ctx           */
 
         mov es:[bx+0],  ax
+        /* Retrieve the original BX from the stack and save it. */
+        pop  word ptr es:[bx+2]
         mov es:[bx+4],  cx
         mov es:[bx+6],  dx
         mov es:[bx+8],  si
@@ -525,10 +546,6 @@ void ne_task_yield(NETaskTable *tbl)
         push es
         pop  ax
         mov  es:[bx+26], ax
-
-        /* Save BX (we clobbered it). The original BX is on the C
-         * stack frame; retrieve from the caller-saved copy.             */
-        mov  es:[bx+2], bx  /* approximate – BX is ctx-relative now  */
 
         /* ----- restore scheduler context ----------------------------- */
         les bx, dword ptr tbl

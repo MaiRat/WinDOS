@@ -30,9 +30,12 @@
  * start of the allocated conventional memory block.
  */
 
-/* Convert byte count to paragraph count (16-byte units), rounding up. */
+/* Convert byte count to paragraph count (16-byte units), rounding up.
+ * DOS conventional memory is limited to ~640KB; cap to prevent overflow. */
 static uint16_t ne_dos_bytes_to_paras(uint32_t bytes)
 {
+    if (bytes > 0xFFFF0uL)  /* cap at max conventional memory */
+        return 0xFFFFu;
     return (uint16_t)((bytes + 15u) >> 4);
 }
 
@@ -77,11 +80,19 @@ static void ne_dos_free(void __far *ptr)
 
 /*
  * ne_dos_calloc - allocate and zero-fill via ne_dos_alloc + _fmemset.
+ * Checks for multiplication overflow before allocating.
  */
 static void __far *ne_dos_calloc(uint32_t count, uint32_t size)
 {
-    uint32_t     total = count * size;
-    void __far  *p     = ne_dos_alloc(total);
+    uint32_t     total;
+    void __far  *p;
+
+    /* Guard against overflow in the multiplication. */
+    if (count != 0 && size > 0xFFFFFFFFuL / count)
+        return NULL;
+
+    total = count * size;
+    p     = ne_dos_alloc(total);
 
     if (p)
         _fmemset(p, 0, (size_t)total);
