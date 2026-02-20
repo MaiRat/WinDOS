@@ -238,9 +238,9 @@ long ne_kernel_llseek(NEKernelContext *ctx, int hFile,
         return (long)NE_KERNEL_HFILE_ERROR;
 
     switch (origin) {
-    case NE_KERNEL_FILE_BEGIN:   whence = SEEK_SET; break;
+    case NE_KERNEL_FILE_BEGIN:    whence = SEEK_SET; break;
     case NE_KERNEL_FILE_CURRENT: whence = SEEK_CUR; break;
-    case NE_KERNEL_FILE_END:    whence = SEEK_END; break;
+    case NE_KERNEL_FILE_END:     whence = SEEK_END; break;
     default: return (long)NE_KERNEL_HFILE_ERROR;
     }
 
