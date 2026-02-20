@@ -1,13 +1,45 @@
 ## WinDOS Kernel Replacement Roadmap (Windows 3.1)
 
+### Project Scope
+
+> **Current focus: replacing `krnl386.exe` only.**
+>
+> The original `krnl386.exe` is a unique NE-executable with a
+> self-loading stub.  This project aims to produce a drop-in replacement
+> built with the Open Watcom toolchain, which can generate
+> NE-executables.
+>
+> GDI, USER, and driver components are **not** being replaced or removed
+> at this time.  All existing code for those subsystems is preserved in
+> the tree for potential future work.
+
+### Module Classification
+
+| Scope | Modules | Notes |
+|-------|---------|-------|
+| **In scope** (krnl386 replacement) | `ne_parser`, `ne_loader`, `ne_reloc`, `ne_module`, `ne_impexp`, `ne_task`, `ne_mem`, `ne_trap`, `ne_kernel`, `ne_segmgr`, `ne_resource`, `ne_dpmi`, `ne_integrate`, `ne_fullinteg`, `ne_compat`, `ne_release` | Core kernel loading, runtime, and API surface |
+| **Preserved** (future phases) | `ne_user`, `ne_gdi`, `ne_driver` | USER.EXE, GDI.EXE, and device driver code — kept for later replacement work |
+
 ### Overview
-This roadmap breaks the work into small milestones to implement a full Windows 3.1 kernel replacement in WinDOS, starting from executable loading and ending with full subsystem integration.
+This roadmap breaks the work into small milestones to implement a replacement for `krnl386.exe` in WinDOS, starting from executable loading and ending with full subsystem integration.
 
 ### Assumptions
 - A working DOS 16-bit environment is already available.
-- A WATCOM-compatible compiler toolchain is available.
+- The Open Watcom compiler toolchain (v2.0+) is available; it can build 16-bit NE-executables.
 - Target runtime is DOS 5.0+ with enough conventional/extended memory for Windows 3.1 modules.
 - Standard low-level tooling (assembler/linker/debugger) is available for bring-up diagnostics.
+
+### Open Watcom NE-Executable Toolchain Requirements
+
+Building a replacement `krnl386.exe` as an NE-executable requires:
+
+- **Open Watcom C/C++ v2.0+** — `wcc` compiler targeting 16-bit real-mode DOS.
+- **Watcom Linker (`wlink`)** — with `format windows` or `system windows` directive to produce NE-format output.
+- **Large memory model (`-ml`)** — for far code and data segments matching the original krnl386.exe layout.
+- **C99 extensions (`-za99`)** — used throughout the codebase.
+- **NE self-loading stub** — the linker must embed an MZ stub that loads the NE image; Watcom provides this by default for NE targets.
+- **Segment ordering control** — `wlink` `SEGMENT` directives to match the original segment layout (code, data, resident/discardable).
+- **Export definitions** — `wlink` `EXPORT` directives or a `.def` file listing all KERNEL ordinals to produce the correct export table.
 
 ### Step-by-step plan
 1. **NE-file parser**

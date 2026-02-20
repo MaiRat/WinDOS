@@ -1,40 +1,61 @@
 # WinDOS Developer Guide
 
+## Project Scope
+
+> **Current focus: replacing `krnl386.exe` only.**
+>
+> The original `krnl386.exe` is a unique NE-executable with a
+> self-loading stub.  This project produces a drop-in replacement
+> built with the Open Watcom toolchain.
+>
+> GDI, USER, and driver modules are **preserved** in the tree for
+> potential future replacement work but are **out of scope** for the
+> current phase.
+
 ## Overview
 
-WinDOS is a replacement kernel for Windows 3.1 targeting 16-bit
-real-mode DOS.  This guide covers the project architecture, build
-system, coding conventions, testing approach, and contribution workflow.
+WinDOS is a replacement for `krnl386.exe` (the Windows 3.1 kernel),
+targeting 16-bit real-mode DOS.  This guide covers the project
+architecture, build system, coding conventions, testing approach, and
+contribution workflow.
 
 ## Architecture
 
 ### Module Structure
 
 The kernel replacement is organised into discrete C modules, each
-implementing one subsystem of the Windows 3.1 kernel:
+implementing one subsystem of the `krnl386.exe` replacement:
 
 ```
 src/
-├── ne_parser.c / .h      # NE executable format parser
-├── ne_loader.c / .h      # NE file loader (segment allocation)
-├── ne_reloc.c / .h       # Relocation management
-├── ne_module.c / .h      # Module table and lifecycle
-├── ne_impexp.c / .h      # Import/export resolution
-├── ne_task.c / .h        # Task (process) management
-├── ne_mem.c / .h         # Memory management (GMEM/LMEM)
-├── ne_trap.c / .h        # Exception and trap handling
-├── ne_integrate.c / .h   # Subsystem integration layer
-├── ne_fullinteg.c / .h   # Full integration validation
-├── ne_kernel.c / .h      # KERNEL.EXE API stubs
-├── ne_user.c / .h        # USER.EXE subsystem interface
-├── ne_gdi.c / .h         # GDI.EXE subsystem interface
-├── ne_driver.c / .h      # Device drivers (keyboard, timer, display, mouse)
-├── ne_segmgr.c / .h      # Segment discard/reload manager
-├── ne_resource.c / .h    # Resource management (dialogs, menus, accelerators)
-├── ne_compat.c / .h      # Compatibility testing and hardening
-├── ne_release.c / .h     # Release readiness validation
-└── ne_dosalloc.h         # Portable memory allocation macros
+├── ne_parser.c / .h      # NE executable format parser             [IN SCOPE]
+├── ne_loader.c / .h      # NE file loader (segment allocation)     [IN SCOPE]
+├── ne_reloc.c / .h       # Relocation management                   [IN SCOPE]
+├── ne_module.c / .h      # Module table and lifecycle              [IN SCOPE]
+├── ne_impexp.c / .h      # Import/export resolution                [IN SCOPE]
+├── ne_task.c / .h        # Task (process) management               [IN SCOPE]
+├── ne_mem.c / .h         # Memory management (GMEM/LMEM)           [IN SCOPE]
+├── ne_trap.c / .h        # Exception and trap handling             [IN SCOPE]
+├── ne_integrate.c / .h   # Subsystem integration layer             [IN SCOPE]
+├── ne_fullinteg.c / .h   # Full integration validation             [IN SCOPE]
+├── ne_kernel.c / .h      # KERNEL.EXE API stubs                    [IN SCOPE]
+├── ne_segmgr.c / .h      # Segment discard/reload manager          [IN SCOPE]
+├── ne_resource.c / .h    # Resource management                     [IN SCOPE]
+├── ne_compat.c / .h      # Compatibility testing and hardening     [IN SCOPE]
+├── ne_release.c / .h     # Release readiness validation            [IN SCOPE]
+├── ne_dpmi.c / .h        # DPMI protected-mode support             [IN SCOPE]
+├── ne_user.c / .h        # USER.EXE subsystem interface            [PRESERVED]
+├── ne_gdi.c / .h         # GDI.EXE subsystem interface             [PRESERVED]
+├── ne_driver.c / .h      # Device drivers (kbd, timer, disp, mouse)[PRESERVED]
+└── ne_dosalloc.h         # Portable memory allocation macros       [IN SCOPE]
 ```
+
+> **[IN SCOPE]** modules are actively developed as part of the
+> `krnl386.exe` replacement.
+>
+> **[PRESERVED]** modules contain GDI, USER, and driver code that is
+> kept for potential future replacement work.  Do not delete these
+> files.
 
 ### Dual-Target Build
 
@@ -255,9 +276,11 @@ cc -std=c99 -Wall -Wextra -Isrc src/ne_parser.c tests/test_ne_parser.c \
 
 The project roadmap is maintained in two documents:
 
-- **[ReadME.md](ReadME.md)** – Original 9-step implementation plan.
+- **[ReadME.md](ReadME.md)** – Original 9-step implementation plan
+  and project scope declaration.
 - **[ROADMAP.md](ROADMAP.md)** – Extended roadmap covering Phases 1–7
-  (DOS bring-up through release readiness).
+  (DOS bring-up through release readiness), with GDI/USER/driver
+  phases marked as preserved for future work.
 
 ## License
 
