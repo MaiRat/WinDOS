@@ -29,11 +29,11 @@ The original roadmap covers the **NE executable loading and runtime infrastructu
 
 Complete the transition from host/POSIX stubs to real 16-bit DOS code.
 
-- [ ] Implement 16-bit real-mode context switching in `ne_task.c` using Watcom inline assembly (replaces the current `ucontext` POSIX path).
-- [ ] Implement DOS interrupt vector table (IVT) installation for CPU exception handlers in `ne_trap.c`.
-- [ ] Replace host `malloc`/`free` calls in the loader and memory manager with DOS INT 21h memory allocation (AH=48h/49h/4Ah).
-- [ ] Validate the build under the Open Watcom 16-bit DOS target and resolve any compiler/linker issues.
-- [ ] Run the existing test suite on a DOS environment (or emulator such as DOSBox) and fix platform-specific failures.
+- [x] Implement 16-bit real-mode context switching in `ne_task.c` using Watcom inline assembly (replaces the current `ucontext` POSIX path).
+- [x] Implement DOS interrupt vector table (IVT) installation for CPU exception handlers in `ne_trap.c`.
+- [x] Replace host `malloc`/`free` calls in the loader and memory manager with DOS INT 21h memory allocation (AH=48h/49h/4Ah).
+- [x] Validate the build under the Open Watcom 16-bit DOS target and resolve any compiler/linker issues.
+- [x] Run the existing test suite on a DOS environment (or emulator such as DOSBox) and fix platform-specific failures.
 
 ## Phase 2 – Windows 3.1 API Stubs (KERNEL)
 

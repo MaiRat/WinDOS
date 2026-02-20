@@ -10,8 +10,8 @@
  */
 
 #include "ne_mem.h"
+#include "ne_dosalloc.h"
 
-#include <stdlib.h>
 #include <string.h>
 
 /* =========================================================================
@@ -66,7 +66,7 @@ int ne_gmem_table_init(NEGMemTable *tbl, uint16_t capacity)
 
     memset(tbl, 0, sizeof(*tbl));
 
-    tbl->blocks = (NEGMemBlock *)calloc(capacity, sizeof(NEGMemBlock));
+    tbl->blocks = (NEGMemBlock *)NE_CALLOC(capacity, sizeof(NEGMemBlock));
     if (!tbl->blocks)
         return NE_MEM_ERR_ALLOC;
 
@@ -88,11 +88,11 @@ void ne_gmem_table_free(NEGMemTable *tbl)
         for (i = 0; i < tbl->capacity; i++) {
             if (tbl->blocks[i].handle != NE_GMEM_HANDLE_INVALID &&
                 tbl->blocks[i].data   != NULL) {
-                free(tbl->blocks[i].data);
+                NE_FREE(tbl->blocks[i].data);
                 tbl->blocks[i].data = NULL;
             }
         }
-        free(tbl->blocks);
+        NE_FREE(tbl->blocks);
     }
 
     memset(tbl, 0, sizeof(*tbl));
@@ -122,12 +122,13 @@ NEGMemHandle ne_gmem_alloc(NEGMemTable *tbl,
 
     /*
      * Allocate the data buffer.
-     * On Watcom/DOS replace with _fmalloc / _fcalloc or INT 21h AH=48h.
+     * On Watcom/DOS: uses DOS INT 21h AH=48h for conventional memory.
+     * On POSIX host: uses standard C library malloc/calloc.
      */
     if (flags & NE_GMEM_ZEROINIT) {
-        buf = (uint8_t *)calloc((size_t)size, 1u);
+        buf = (uint8_t *)NE_CALLOC(1u, size);
     } else {
-        buf = (uint8_t *)malloc((size_t)size);
+        buf = (uint8_t *)NE_MALLOC(size);
     }
     if (!buf)
         return NE_GMEM_HANDLE_INVALID;
@@ -163,7 +164,7 @@ int ne_gmem_free(NEGMemTable *tbl, NEGMemHandle handle)
 
     /* Free the data buffer. */
     if (b->data) {
-        free(b->data);
+        NE_FREE(b->data);
         b->data = NULL;
     }
 
@@ -259,7 +260,7 @@ uint16_t ne_gmem_free_by_owner(NEGMemTable *tbl, uint16_t owner_task)
             continue;
 
         if (b->data) {
-            free(b->data);
+            NE_FREE(b->data);
             b->data = NULL;
         }
         memset(b, 0, sizeof(*b));
@@ -327,7 +328,7 @@ void ne_lmem_heap_free(NELMemHeap *heap)
     for (i = 0; i < NE_LMEM_HEAP_CAP; i++) {
         if (heap->blocks[i].handle != NE_LMEM_HANDLE_INVALID &&
             heap->blocks[i].data   != NULL) {
-            free(heap->blocks[i].data);
+            NE_FREE(heap->blocks[i].data);
             heap->blocks[i].data = NULL;
         }
     }
@@ -355,9 +356,9 @@ NELMemHandle ne_lmem_alloc(NELMemHeap *heap, uint16_t flags, uint16_t size)
         return NE_LMEM_HANDLE_INVALID;
 
     if (flags & NE_LMEM_ZEROINIT) {
-        buf = (uint8_t *)calloc((size_t)size, 1u);
+        buf = (uint8_t *)NE_CALLOC(1u, size);
     } else {
-        buf = (uint8_t *)malloc((size_t)size);
+        buf = (uint8_t *)NE_MALLOC(size);
     }
     if (!buf)
         return NE_LMEM_HANDLE_INVALID;
@@ -391,7 +392,7 @@ int ne_lmem_free(NELMemHeap *heap, NELMemHandle handle)
         return NE_MEM_ERR_NOT_FOUND;
 
     if (b->data) {
-        free(b->data);
+        NE_FREE(b->data);
         b->data = NULL;
     }
 

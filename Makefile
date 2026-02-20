@@ -203,3 +203,51 @@ test: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPE
 
 clean:
 	rm -rf $(BUILD_DIR)
+
+# =========================================================================
+# Host (POSIX) build targets for CI validation
+#
+# These targets build and test using the host C compiler (cc/gcc) so that
+# correctness can be verified in CI environments where Open Watcom is not
+# available.  The __WATCOMC__ paths are not compiled; only the POSIX paths
+# are exercised.
+# =========================================================================
+
+HOST_CC     := cc
+HOST_CFLAGS := -std=c99 -Wall -Wextra -I$(CURDIR)/src
+
+.PHONY: host-test host-clean
+
+host-test: | $(BUILD_DIR)
+	@echo "=== Building and running all tests with host compiler ==="
+	@echo "--- NE parser ---"
+	$(HOST_CC) $(HOST_CFLAGS) $(SRC_DIR)/ne_parser.c $(TEST_DIR)/test_ne_parser.c -o $(BUILD_DIR)/host_test_parser
+	$(BUILD_DIR)/host_test_parser
+	@echo "--- NE loader ---"
+	$(HOST_CC) $(HOST_CFLAGS) $(SRC_DIR)/ne_parser.c $(SRC_DIR)/ne_loader.c $(TEST_DIR)/test_ne_loader.c -o $(BUILD_DIR)/host_test_loader
+	$(BUILD_DIR)/host_test_loader
+	@echo "--- NE relocation ---"
+	$(HOST_CC) $(HOST_CFLAGS) $(SRC_DIR)/ne_parser.c $(SRC_DIR)/ne_loader.c $(SRC_DIR)/ne_reloc.c $(TEST_DIR)/test_ne_reloc.c -o $(BUILD_DIR)/host_test_reloc
+	$(BUILD_DIR)/host_test_reloc
+	@echo "--- NE module table ---"
+	$(HOST_CC) $(HOST_CFLAGS) $(SRC_DIR)/ne_parser.c $(SRC_DIR)/ne_loader.c $(SRC_DIR)/ne_module.c $(TEST_DIR)/test_ne_module.c -o $(BUILD_DIR)/host_test_module
+	$(BUILD_DIR)/host_test_module
+	@echo "--- NE import/export ---"
+	$(HOST_CC) $(HOST_CFLAGS) $(SRC_DIR)/ne_parser.c $(SRC_DIR)/ne_impexp.c $(TEST_DIR)/test_ne_impexp.c -o $(BUILD_DIR)/host_test_impexp
+	$(BUILD_DIR)/host_test_impexp
+	@echo "--- NE task/memory ---"
+	$(HOST_CC) $(HOST_CFLAGS) $(SRC_DIR)/ne_task.c $(SRC_DIR)/ne_mem.c $(TEST_DIR)/test_ne_task.c -o $(BUILD_DIR)/host_test_task
+	$(BUILD_DIR)/host_test_task
+	@echo "--- NE trap ---"
+	$(HOST_CC) $(HOST_CFLAGS) $(SRC_DIR)/ne_trap.c $(TEST_DIR)/test_ne_trap.c -o $(BUILD_DIR)/host_test_trap
+	$(BUILD_DIR)/host_test_trap
+	@echo "--- NE integration ---"
+	$(HOST_CC) $(HOST_CFLAGS) $(SRC_DIR)/ne_integrate.c $(TEST_DIR)/test_ne_integrate.c -o $(BUILD_DIR)/host_test_integrate
+	$(BUILD_DIR)/host_test_integrate
+	@echo "--- NE full integration ---"
+	$(HOST_CC) $(HOST_CFLAGS) $(SRC_DIR)/ne_fullinteg.c $(TEST_DIR)/test_ne_fullinteg.c -o $(BUILD_DIR)/host_test_fullinteg
+	$(BUILD_DIR)/host_test_fullinteg
+	@echo "=== All host tests passed ==="
+
+host-clean:
+	rm -f $(BUILD_DIR)/host_test_*

@@ -6,8 +6,8 @@
  */
 
 #include "ne_loader.h"
+#include "ne_dosalloc.h"
 
-#include <stdlib.h>
 #include <string.h>
 
 /* -------------------------------------------------------------------------
@@ -45,7 +45,7 @@ int ne_load_buffer(const uint8_t *buf, size_t len,
     if (hdr->segment_count == 0)
         goto validate_entry;
 
-    loader->segments = (NELoadedSegment *)calloc(hdr->segment_count,
+    loader->segments = (NELoadedSegment *)NE_CALLOC(hdr->segment_count,
                                                  sizeof(NELoadedSegment));
     if (!loader->segments)
         return NE_LOAD_ERR_NOMEM;
@@ -77,7 +77,7 @@ int ne_load_buffer(const uint8_t *buf, size_t len,
         ls->data_size  = 0;
 
         /* Allocate and zero-fill the segment buffer */
-        ls->data = (uint8_t *)calloc(1, alloc_sz);
+        ls->data = (uint8_t *)NE_CALLOC(1, alloc_sz);
         if (!ls->data) {
             ne_loader_free(loader);
             return NE_LOAD_ERR_NOMEM;
@@ -148,21 +148,21 @@ int ne_load_file(const char *path,
 
     rewind(fp);
 
-    buf = (uint8_t *)malloc((size_t)file_len);
+    buf = (uint8_t *)NE_MALLOC((size_t)file_len);
     if (!buf) {
         fclose(fp);
         return NE_LOAD_ERR_NOMEM;
     }
 
     if (fread(buf, 1, (size_t)file_len, fp) != (size_t)file_len) {
-        free(buf);
+        NE_FREE(buf);
         fclose(fp);
         return NE_LOAD_ERR_IO;
     }
     fclose(fp);
 
     ret = ne_load_buffer(buf, (size_t)file_len, parser, loader);
-    free(buf);
+    NE_FREE(buf);
     return ret;
 }
 
@@ -179,8 +179,8 @@ void ne_loader_free(NELoaderContext *loader)
 
     if (loader->segments) {
         for (i = 0; i < loader->count; i++)
-            free(loader->segments[i].data);
-        free(loader->segments);
+            NE_FREE(loader->segments[i].data);
+        NE_FREE(loader->segments);
     }
 
     memset(loader, 0, sizeof(*loader));
