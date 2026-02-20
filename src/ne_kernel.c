@@ -622,7 +622,7 @@ int ne_kernel_load_string(NEKernelContext *ctx, uint16_t hModule,
         off++;
         if (slen == 0 || off + slen > entry->raw_size) {
             buf[0] = '\0';
-            return (slen == 0) ? 0 : 0;
+            return 0;
         }
         copy_len = slen;
         if ((int)copy_len >= buf_size)
