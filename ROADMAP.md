@@ -39,15 +39,15 @@ Complete the transition from host/POSIX stubs to real 16-bit DOS code.
 
 Provide stub or minimal implementations of the most critical KERNEL.EXE exports so that Windows 3.1 applications can link and start.
 
-- [ ] Enumerate all KERNEL.EXE exports (ordinal list) and classify each as critical, secondary, or optional.
-- [ ] Implement critical file I/O APIs: `_lopen`, `_lclose`, `_lread`, `_lwrite`, `_llseek`.
-- [ ] Implement module APIs: `GetModuleHandle`, `GetModuleFileName`, `GetProcAddress`, `LoadLibrary`, `FreeLibrary`.
-- [ ] Implement memory APIs: `GlobalAlloc`, `GlobalFree`, `GlobalLock`, `GlobalUnlock`, `GlobalReAlloc`, `LocalAlloc`, `LocalFree`, `LocalLock`, `LocalUnlock`.
-- [ ] Implement task/process APIs: `GetCurrentTask`, `Yield`, `InitTask`, `WaitEvent`, `PostEvent`.
-- [ ] Implement string/resource APIs: `LoadString`, `LoadResource`, `FindResource`, `LockResource`.
-- [ ] Implement atom APIs: `GlobalAddAtom`, `GlobalFindAtom`, `GlobalGetAtomName`, `GlobalDeleteAtom`.
-- [ ] Register all implemented exports in the import/export resolution table so NE modules can resolve them at load time.
-- [ ] Write tests verifying each stub returns expected values or behaves correctly for basic call sequences.
+- [x] Enumerate all KERNEL.EXE exports (ordinal list) and classify each as critical, secondary, or optional.
+- [x] Implement critical file I/O APIs: `_lopen`, `_lclose`, `_lread`, `_lwrite`, `_llseek`.
+- [x] Implement module APIs: `GetModuleHandle`, `GetModuleFileName`, `GetProcAddress`, `LoadLibrary`, `FreeLibrary`.
+- [x] Implement memory APIs: `GlobalAlloc`, `GlobalFree`, `GlobalLock`, `GlobalUnlock`, `GlobalReAlloc`, `LocalAlloc`, `LocalFree`, `LocalLock`, `LocalUnlock`.
+- [x] Implement task/process APIs: `GetCurrentTask`, `Yield`, `InitTask`, `WaitEvent`, `PostEvent`.
+- [x] Implement string/resource APIs: `LoadString`, `LoadResource`, `FindResource`, `LockResource`.
+- [x] Implement atom APIs: `GlobalAddAtom`, `GlobalFindAtom`, `GlobalGetAtomName`, `GlobalDeleteAtom`.
+- [x] Register all implemented exports in the import/export resolution table so NE modules can resolve them at load time.
+- [x] Write tests verifying each stub returns expected values or behaves correctly for basic call sequences.
 
 ## Phase 3 – USER and GDI Subsystem Interfaces
 

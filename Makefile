@@ -54,6 +54,9 @@ INTEGRATE_OBJ  := $(BUILD_DIR)/ne_integrate.obj
 FULLINTEG_SRC  := $(SRC_DIR)/ne_fullinteg.c
 FULLINTEG_OBJ  := $(BUILD_DIR)/ne_fullinteg.obj
 
+KERNEL_SRC     := $(SRC_DIR)/ne_kernel.c
+KERNEL_OBJ     := $(BUILD_DIR)/ne_kernel.obj
+
 TEST_SRC         := $(TEST_DIR)/test_ne_parser.c
 TEST_OBJ         := $(BUILD_DIR)/test_ne_parser.obj
 TEST_BIN         := $(BUILD_DIR)/test_ne_parser.exe
@@ -90,9 +93,13 @@ FULLINTEG_TEST_SRC  := $(TEST_DIR)/test_ne_fullinteg.c
 FULLINTEG_TEST_OBJ  := $(BUILD_DIR)/test_ne_fullinteg.obj
 FULLINTEG_TEST_BIN  := $(BUILD_DIR)/test_ne_fullinteg.exe
 
+KERNEL_TEST_SRC     := $(TEST_DIR)/test_ne_kernel.c
+KERNEL_TEST_OBJ     := $(BUILD_DIR)/test_ne_kernel.obj
+KERNEL_TEST_BIN     := $(BUILD_DIR)/test_ne_kernel.exe
+
 .PHONY: all test clean
 
-all: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN) $(INTEGRATE_TEST_BIN) $(FULLINTEG_TEST_BIN)
+all: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN) $(INTEGRATE_TEST_BIN) $(FULLINTEG_TEST_BIN) $(KERNEL_TEST_BIN)
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
@@ -127,6 +134,9 @@ $(INTEGRATE_OBJ): $(INTEGRATE_SRC) $(SRC_DIR)/ne_integrate.h | $(BUILD_DIR)
 $(FULLINTEG_OBJ): $(FULLINTEG_SRC) $(SRC_DIR)/ne_fullinteg.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
+$(KERNEL_OBJ): $(KERNEL_SRC) $(SRC_DIR)/ne_kernel.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -fo=$@ $<
+
 $(TEST_OBJ): $(TEST_SRC) $(SRC_DIR)/ne_parser.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
@@ -152,6 +162,9 @@ $(INTEGRATE_TEST_OBJ): $(INTEGRATE_TEST_SRC) $(SRC_DIR)/ne_integrate.h | $(BUILD
 	$(CC) $(CFLAGS) -fo=$@ $<
 
 $(FULLINTEG_TEST_OBJ): $(FULLINTEG_TEST_SRC) $(SRC_DIR)/ne_fullinteg.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -fo=$@ $<
+
+$(KERNEL_TEST_OBJ): $(KERNEL_TEST_SRC) $(SRC_DIR)/ne_kernel.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
 $(TEST_BIN): $(TEST_OBJ) $(PARSER_OBJ) | $(BUILD_DIR)
@@ -181,7 +194,10 @@ $(INTEGRATE_TEST_BIN): $(INTEGRATE_TEST_OBJ) $(INTEGRATE_OBJ) | $(BUILD_DIR)
 $(FULLINTEG_TEST_BIN): $(FULLINTEG_TEST_OBJ) $(FULLINTEG_OBJ) | $(BUILD_DIR)
 	$(LD) $(LDFLAGS) name $@ file $(FULLINTEG_TEST_OBJ),$(FULLINTEG_OBJ)
 
-test: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN) $(INTEGRATE_TEST_BIN) $(FULLINTEG_TEST_BIN)
+$(KERNEL_TEST_BIN): $(KERNEL_TEST_OBJ) $(KERNEL_OBJ) $(PARSER_OBJ) $(LOADER_OBJ) $(MODULE_OBJ) $(IMPEXP_OBJ) $(MEM_OBJ) $(TASK_OBJ) | $(BUILD_DIR)
+	$(LD) $(LDFLAGS) name $@ file $(KERNEL_TEST_OBJ),$(KERNEL_OBJ),$(PARSER_OBJ),$(LOADER_OBJ),$(MODULE_OBJ),$(IMPEXP_OBJ),$(MEM_OBJ),$(TASK_OBJ)
+
+test: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN) $(INTEGRATE_TEST_BIN) $(FULLINTEG_TEST_BIN) $(KERNEL_TEST_BIN)
 	@echo "--- Running NE parser tests ---"
 	$(TEST_BIN)
 	@echo "--- Running NE loader tests ---"
@@ -200,6 +216,8 @@ test: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPE
 	$(INTEGRATE_TEST_BIN)
 	@echo "--- Running NE full integration tests ---"
 	$(FULLINTEG_TEST_BIN)
+	@echo "--- Running KERNEL.EXE API stub tests ---"
+	$(KERNEL_TEST_BIN)
 
 clean:
 	rm -rf $(BUILD_DIR)
@@ -247,6 +265,9 @@ host-test: | $(BUILD_DIR)
 	@echo "--- NE full integration ---"
 	$(HOST_CC) $(HOST_CFLAGS) $(SRC_DIR)/ne_fullinteg.c $(TEST_DIR)/test_ne_fullinteg.c -o $(BUILD_DIR)/host_test_fullinteg
 	$(BUILD_DIR)/host_test_fullinteg
+	@echo "--- KERNEL.EXE API stubs ---"
+	$(HOST_CC) $(HOST_CFLAGS) $(SRC_DIR)/ne_parser.c $(SRC_DIR)/ne_loader.c $(SRC_DIR)/ne_module.c $(SRC_DIR)/ne_impexp.c $(SRC_DIR)/ne_mem.c $(SRC_DIR)/ne_task.c $(SRC_DIR)/ne_kernel.c $(TEST_DIR)/test_ne_kernel.c -o $(BUILD_DIR)/host_test_kernel
+	$(BUILD_DIR)/host_test_kernel
 	@echo "=== All host tests passed ==="
 
 host-clean:
