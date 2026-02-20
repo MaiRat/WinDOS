@@ -66,6 +66,12 @@ GDI_OBJ        := $(BUILD_DIR)/ne_gdi.obj
 DRIVER_SRC     := $(SRC_DIR)/ne_driver.c
 DRIVER_OBJ     := $(BUILD_DIR)/ne_driver.obj
 
+SEGMGR_SRC     := $(SRC_DIR)/ne_segmgr.c
+SEGMGR_OBJ     := $(BUILD_DIR)/ne_segmgr.obj
+
+RESOURCE_SRC   := $(SRC_DIR)/ne_resource.c
+RESOURCE_OBJ   := $(BUILD_DIR)/ne_resource.obj
+
 TEST_SRC         := $(TEST_DIR)/test_ne_parser.c
 TEST_OBJ         := $(BUILD_DIR)/test_ne_parser.obj
 TEST_BIN         := $(BUILD_DIR)/test_ne_parser.exe
@@ -118,9 +124,17 @@ DRIVER_TEST_SRC     := $(TEST_DIR)/test_ne_driver.c
 DRIVER_TEST_OBJ     := $(BUILD_DIR)/test_ne_driver.obj
 DRIVER_TEST_BIN     := $(BUILD_DIR)/test_ne_driver.exe
 
+SEGMGR_TEST_SRC     := $(TEST_DIR)/test_ne_segmgr.c
+SEGMGR_TEST_OBJ     := $(BUILD_DIR)/test_ne_segmgr.obj
+SEGMGR_TEST_BIN     := $(BUILD_DIR)/test_ne_segmgr.exe
+
+RESOURCE_TEST_SRC   := $(TEST_DIR)/test_ne_resource.c
+RESOURCE_TEST_OBJ   := $(BUILD_DIR)/test_ne_resource.obj
+RESOURCE_TEST_BIN   := $(BUILD_DIR)/test_ne_resource.exe
+
 .PHONY: all test clean
 
-all: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN) $(INTEGRATE_TEST_BIN) $(FULLINTEG_TEST_BIN) $(KERNEL_TEST_BIN) $(USER_TEST_BIN) $(GDI_TEST_BIN) $(DRIVER_TEST_BIN)
+all: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN) $(INTEGRATE_TEST_BIN) $(FULLINTEG_TEST_BIN) $(KERNEL_TEST_BIN) $(USER_TEST_BIN) $(GDI_TEST_BIN) $(DRIVER_TEST_BIN) $(SEGMGR_TEST_BIN) $(RESOURCE_TEST_BIN)
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
@@ -167,6 +181,12 @@ $(GDI_OBJ): $(GDI_SRC) $(SRC_DIR)/ne_gdi.h | $(BUILD_DIR)
 $(DRIVER_OBJ): $(DRIVER_SRC) $(SRC_DIR)/ne_driver.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
+$(SEGMGR_OBJ): $(SEGMGR_SRC) $(SRC_DIR)/ne_segmgr.h $(SRC_DIR)/ne_parser.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -fo=$@ $<
+
+$(RESOURCE_OBJ): $(RESOURCE_SRC) $(SRC_DIR)/ne_resource.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -fo=$@ $<
+
 $(TEST_OBJ): $(TEST_SRC) $(SRC_DIR)/ne_parser.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
@@ -204,6 +224,12 @@ $(GDI_TEST_OBJ): $(GDI_TEST_SRC) $(SRC_DIR)/ne_gdi.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
 $(DRIVER_TEST_OBJ): $(DRIVER_TEST_SRC) $(SRC_DIR)/ne_driver.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -fo=$@ $<
+
+$(SEGMGR_TEST_OBJ): $(SEGMGR_TEST_SRC) $(SRC_DIR)/ne_segmgr.h $(SRC_DIR)/ne_parser.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -fo=$@ $<
+
+$(RESOURCE_TEST_OBJ): $(RESOURCE_TEST_SRC) $(SRC_DIR)/ne_resource.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
 $(TEST_BIN): $(TEST_OBJ) $(PARSER_OBJ) | $(BUILD_DIR)
@@ -245,7 +271,13 @@ $(GDI_TEST_BIN): $(GDI_TEST_OBJ) $(GDI_OBJ) | $(BUILD_DIR)
 $(DRIVER_TEST_BIN): $(DRIVER_TEST_OBJ) $(DRIVER_OBJ) | $(BUILD_DIR)
 	$(LD) $(LDFLAGS) name $@ file $(DRIVER_TEST_OBJ),$(DRIVER_OBJ)
 
-test: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN) $(INTEGRATE_TEST_BIN) $(FULLINTEG_TEST_BIN) $(KERNEL_TEST_BIN) $(USER_TEST_BIN) $(GDI_TEST_BIN) $(DRIVER_TEST_BIN)
+$(SEGMGR_TEST_BIN): $(SEGMGR_TEST_OBJ) $(SEGMGR_OBJ) $(PARSER_OBJ) | $(BUILD_DIR)
+	$(LD) $(LDFLAGS) name $@ file $(SEGMGR_TEST_OBJ),$(SEGMGR_OBJ),$(PARSER_OBJ)
+
+$(RESOURCE_TEST_BIN): $(RESOURCE_TEST_OBJ) $(RESOURCE_OBJ) | $(BUILD_DIR)
+	$(LD) $(LDFLAGS) name $@ file $(RESOURCE_TEST_OBJ),$(RESOURCE_OBJ)
+
+test: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN) $(INTEGRATE_TEST_BIN) $(FULLINTEG_TEST_BIN) $(KERNEL_TEST_BIN) $(USER_TEST_BIN) $(GDI_TEST_BIN) $(DRIVER_TEST_BIN) $(SEGMGR_TEST_BIN) $(RESOURCE_TEST_BIN)
 	@echo "--- Running NE parser tests ---"
 	$(TEST_BIN)
 	@echo "--- Running NE loader tests ---"
@@ -272,6 +304,10 @@ test: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPE
 	$(GDI_TEST_BIN)
 	@echo "--- Running Device Driver tests ---"
 	$(DRIVER_TEST_BIN)
+	@echo "--- Running Segment Manager tests (Phase 5) ---"
+	$(SEGMGR_TEST_BIN)
+	@echo "--- Running Resource Manager tests (Phase 5) ---"
+	$(RESOURCE_TEST_BIN)
 
 clean:
 	rm -rf $(BUILD_DIR)
@@ -331,6 +367,12 @@ host-test: | $(BUILD_DIR)
 	@echo "--- Device drivers ---"
 	$(HOST_CC) $(HOST_CFLAGS) $(SRC_DIR)/ne_driver.c $(TEST_DIR)/test_ne_driver.c -o $(BUILD_DIR)/host_test_driver
 	$(BUILD_DIR)/host_test_driver
+	@echo "--- Segment manager (Phase 5) ---"
+	$(HOST_CC) $(HOST_CFLAGS) $(SRC_DIR)/ne_parser.c $(SRC_DIR)/ne_segmgr.c $(TEST_DIR)/test_ne_segmgr.c -o $(BUILD_DIR)/host_test_segmgr
+	$(BUILD_DIR)/host_test_segmgr
+	@echo "--- Resource manager (Phase 5) ---"
+	$(HOST_CC) $(HOST_CFLAGS) $(SRC_DIR)/ne_resource.c $(TEST_DIR)/test_ne_resource.c -o $(BUILD_DIR)/host_test_resource
+	$(BUILD_DIR)/host_test_resource
 	@echo "=== All host tests passed ==="
 
 host-clean:

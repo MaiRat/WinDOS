@@ -76,13 +76,13 @@ Enable keyboard, timer, and display drivers under DOS.
 
 Implement segment discarding, reloading, and full resource management required by larger Windows 3.1 applications.
 
-- [ ] Implement discardable segment eviction and demand-reload from file.
-- [ ] Implement movable segment compaction and handle table updates.
-- [ ] Implement full resource enumeration (`EnumResourceTypes`, `EnumResourceNames`).
-- [ ] Implement accelerator table loading and translation.
-- [ ] Implement dialog template loading and `DialogBox` / `CreateDialog`.
-- [ ] Implement menu resource loading and `LoadMenu`, `TrackPopupMenu`.
-- [ ] Write tests for segment discard/reload and resource enumeration.
+- [x] Implement discardable segment eviction and demand-reload from file.
+- [x] Implement movable segment compaction and handle table updates.
+- [x] Implement full resource enumeration (`EnumResourceTypes`, `EnumResourceNames`).
+- [x] Implement accelerator table loading and translation.
+- [x] Implement dialog template loading and `DialogBox` / `CreateDialog`.
+- [x] Implement menu resource loading and `LoadMenu`, `TrackPopupMenu`.
+- [x] Write tests for segment discard/reload and resource enumeration.
 
 ## Phase 6 – Compatibility Testing and Hardening
 
