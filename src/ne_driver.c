@@ -59,7 +59,7 @@ static const uint8_t g_default_scancode_map[NE_DRV_SCANCODE_MAX] = {
     /* 0x17 */ VK_I,
     /* 0x18 */ VK_O,
     /* 0x19 */ VK_P,
-    /* 0x1A */ VK_OEM_4,    /* left bracket */
+    /* 0x1A */ VK_OEM_4,   /* left bracket */
     /* 0x1B */ VK_OEM_6,   /* right bracket */
     /* 0x1C */ VK_RETURN,
     /* 0x1D */ VK_CONTROL,
@@ -72,11 +72,11 @@ static const uint8_t g_default_scancode_map[NE_DRV_SCANCODE_MAX] = {
     /* 0x24 */ VK_J,
     /* 0x25 */ VK_K,
     /* 0x26 */ VK_L,
-    /* 0x27 */ VK_OEM_1,    /* semicolon */
+    /* 0x27 */ VK_OEM_1,   /* semicolon */
     /* 0x28 */ VK_OEM_7,   /* apostrophe */
     /* 0x29 */ VK_OEM_3,   /* grave accent */
     /* 0x2A */ VK_SHIFT,
-    /* 0x2B */ VK_OEM_5,    /* backslash */
+    /* 0x2B */ VK_OEM_5,   /* backslash */
     /* 0x2C */ VK_Z,
     /* 0x2D */ VK_X,
     /* 0x2E */ VK_C,
@@ -84,9 +84,9 @@ static const uint8_t g_default_scancode_map[NE_DRV_SCANCODE_MAX] = {
     /* 0x30 */ VK_B,
     /* 0x31 */ VK_N,
     /* 0x32 */ VK_M,
-    /* 0x33 */ VK_OEM_COMMA,  /* comma */
-    /* 0x34 */ VK_OEM_PERIOD,/* period */
-    /* 0x35 */ VK_OEM_2,     /* forward slash */
+    /* 0x33 */ VK_OEM_COMMA, /* comma */
+    /* 0x34 */ VK_OEM_PERIOD, /* period */
+    /* 0x35 */ VK_OEM_2,   /* forward slash */
     /* 0x36 */ VK_SHIFT,   /* right shift */
     /* 0x37 */ VK_MULTIPLY, /* keypad * */
     /* 0x38 */ VK_MENU,    /* ALT */
