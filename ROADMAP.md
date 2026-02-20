@@ -100,12 +100,12 @@ Validate the replacement kernel against real Windows 3.1 binaries and applicatio
 
 Final validation, documentation, and release packaging.
 
-- [ ] Perform full end-to-end boot sequence on target DOS hardware or emulator.
-- [ ] Execute the complete regression test suite and confirm zero regressions.
-- [ ] Write a user-facing installation guide (DOS setup, file placement, boot procedure).
-- [ ] Write a developer guide covering architecture, build instructions, and contribution workflow.
-- [ ] Verify reproducible builds produce bit-identical output across clean environments.
-- [ ] Tag a versioned release with changelog and known-issues list.
+- [x] Perform full end-to-end boot sequence on target DOS hardware or emulator.
+- [x] Execute the complete regression test suite and confirm zero regressions.
+- [x] Write a user-facing installation guide (DOS setup, file placement, boot procedure).
+- [x] Write a developer guide covering architecture, build instructions, and contribution workflow.
+- [x] Verify reproducible builds produce bit-identical output across clean environments.
+- [x] Tag a versioned release with changelog and known-issues list.
 
 ---
 
