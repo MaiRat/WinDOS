@@ -230,21 +230,21 @@ dependency.  Each item is actionable and self-contained.
 
 These APIs are required by nearly every Windows 3.1 application.
 
-- [ ] Implement `GetVersion` / `GetWinFlags` to report OS version and
+- [x] Implement `GetVersion` / `GetWinFlags` to report OS version and
       capability flags
-- [ ] Implement `GetWindowsDirectory` / `GetSystemDirectory`
-- [ ] Implement `GetDOSEnvironment`
-- [ ] Implement `WinExec` for launching child applications
-- [ ] Implement `ExitWindows` for clean shutdown
-- [ ] Implement `FatalExit` / `FatalAppExit` for error termination
-- [ ] Implement `GetTickCount` in KERNEL stubs (delegate to `ne_driver`)
-- [ ] Implement `Catch` / `Throw` for non-local jumps
-- [ ] Implement `MakeProcInstance` / `FreeProcInstance` for callback
+- [x] Implement `GetWindowsDirectory` / `GetSystemDirectory`
+- [x] Implement `GetDOSEnvironment`
+- [x] Implement `WinExec` for launching child applications
+- [x] Implement `ExitWindows` for clean shutdown
+- [x] Implement `FatalExit` / `FatalAppExit` for error termination
+- [x] Implement `GetTickCount` in KERNEL stubs (delegate to `ne_driver`)
+- [x] Implement `Catch` / `Throw` for non-local jumps
+- [x] Implement `MakeProcInstance` / `FreeProcInstance` for callback
       thunks
-- [ ] Implement `OpenFile` with full ofstruct semantics
-- [ ] Implement `OutputDebugString` for debug output
-- [ ] Implement `SetErrorMode` / `GetLastError`
-- [ ] Implement `IsTask` / `GetNumTasks`
+- [x] Implement `OpenFile` with full ofstruct semantics
+- [x] Implement `OutputDebugString` for debug output
+- [x] Implement `SetErrorMode` / `GetLastError`
+- [x] Implement `IsTask` / `GetNumTasks`
 
 ### Phase B – INI File and Profile APIs
 

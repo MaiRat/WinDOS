@@ -27,6 +27,8 @@
 #include "ne_task.h"
 #include "ne_module.h"
 
+#include <setjmp.h>
+
 /* -------------------------------------------------------------------------
  * Error codes
  * ---------------------------------------------------------------------- */
@@ -96,8 +98,69 @@
 #define NE_KERNEL_ORD_GLOBAL_ADD_ATOM    163
 #define NE_KERNEL_ORD_GLOBAL_DELETE_ATOM 164
 #define NE_KERNEL_ORD_GLOBAL_FIND_ATOM   165
-#define NE_KERNEL_ORD_GLOBAL_GET_ATOM_NAME 166
+#define NE_KERNEL_ORD_GLOBAL_GET_ATOM_NAME 167
 #define NE_KERNEL_ORD_LOAD_STRING        176
+
+/* Phase A – critical KERNEL.EXE ordinals (Windows 3.1) */
+#define NE_KERNEL_ORD_FATAL_EXIT           1
+#define NE_KERNEL_ORD_GET_VERSION          3
+#define NE_KERNEL_ORD_EXIT_WINDOWS         7
+#define NE_KERNEL_ORD_GET_TICK_COUNT      13
+#define NE_KERNEL_ORD_MAKE_PROC_INSTANCE  51
+#define NE_KERNEL_ORD_FREE_PROC_INSTANCE  52
+#define NE_KERNEL_ORD_CATCH               55
+#define NE_KERNEL_ORD_THROW               56
+#define NE_KERNEL_ORD_OPEN_FILE           74
+#define NE_KERNEL_ORD_SET_ERROR_MODE     107
+#define NE_KERNEL_ORD_OUTPUT_DEBUG_STRING 115
+#define NE_KERNEL_ORD_GET_DOS_ENVIRONMENT 131
+#define NE_KERNEL_ORD_GET_WIN_FLAGS      132
+#define NE_KERNEL_ORD_GET_WINDOWS_DIR    134
+#define NE_KERNEL_ORD_GET_SYSTEM_DIR     135
+#define NE_KERNEL_ORD_FATAL_APP_EXIT     137
+#define NE_KERNEL_ORD_GET_LAST_ERROR     148
+#define NE_KERNEL_ORD_GET_NUM_TASKS      152
+#define NE_KERNEL_ORD_WIN_EXEC           166
+#define NE_KERNEL_ORD_IS_TASK            320
+
+/* -------------------------------------------------------------------------
+ * GetWinFlags constants
+ * ---------------------------------------------------------------------- */
+#define NE_WF_PMODE      0x0001u   /* running in protected mode            */
+#define NE_WF_CPU286     0x0002u   /* 80286 processor                      */
+#define NE_WF_CPU386     0x0004u   /* 80386 processor                      */
+#define NE_WF_CPU486     0x0008u   /* 80486 processor                      */
+#define NE_WF_STANDARD   0x0010u   /* standard mode                        */
+#define NE_WF_ENHANCED   0x0020u   /* 386 enhanced mode                    */
+#define NE_WF_80x87      0x0400u   /* math coprocessor present             */
+
+/* -------------------------------------------------------------------------
+ * Catch / Throw types – non-local jump support
+ *
+ * NECatchBuf wraps a standard jmp_buf so that Catch/Throw can use
+ * setjmp/longjmp portably regardless of jmp_buf size.
+ * ---------------------------------------------------------------------- */
+typedef struct {
+    jmp_buf env;
+} NECatchBuf;
+
+/* -------------------------------------------------------------------------
+ * OpenFile constants and structures
+ * ---------------------------------------------------------------------- */
+#define NE_OF_READ        0x0000u  /* open for reading                     */
+#define NE_OF_WRITE       0x0001u  /* open for writing                     */
+#define NE_OF_READWRITE   0x0002u  /* open for reading and writing         */
+#define NE_OF_EXIST       0x4000u  /* test for existence only              */
+#define NE_OF_DELETE      0x0200u  /* delete the file                      */
+
+#define NE_OFS_MAXPATHNAME  128
+
+typedef struct {
+    uint8_t  cBytes;                         /* size of this struct         */
+    uint8_t  fFixedDisk;                     /* non-zero if on fixed disk   */
+    uint16_t nErrCode;                       /* DOS error code              */
+    char     szPathName[NE_OFS_MAXPATHNAME]; /* full pathname               */
+} NEOfStruct;
 
 /* -------------------------------------------------------------------------
  * Export catalog entry
@@ -132,6 +195,11 @@ typedef struct {
     } atoms[NE_KERNEL_ATOM_TABLE_CAP];
     uint16_t atom_count;       /* number of atoms currently registered      */
     uint16_t next_atom;        /* next atom value to assign                 */
+
+    /* Phase A fields */
+    uint16_t error_mode;       /* current error mode (SetErrorMode)         */
+    uint16_t last_error;       /* last error code (GetLastError)            */
+    void    *driver;           /* optional NEDrvContext for GetTickCount     */
 
     int      initialized;      /* non-zero after successful init            */
 } NEKernelContext;
@@ -484,5 +552,174 @@ int ne_kernel_global_delete_atom(NEKernelContext *ctx, uint16_t atom);
  * ne_kernel_strerror - return a static string describing error code 'err'.
  */
 const char *ne_kernel_strerror(int err);
+
+/* =========================================================================
+ * Public API – Phase A: Critical KERNEL.EXE APIs
+ * ===================================================================== */
+
+/*
+ * ne_kernel_set_driver - attach an optional driver context for GetTickCount.
+ *
+ * 'driver' may be NULL to detach.  Returns NE_KERNEL_OK or
+ * NE_KERNEL_ERR_INIT if the kernel context is not initialised.
+ */
+int ne_kernel_set_driver(NEKernelContext *ctx, void *driver);
+
+/*
+ * ne_kernel_get_version - return the Windows version (3.10).
+ *
+ * Returns 0x0A03: low byte = major (3), high byte = minor (10).
+ */
+uint16_t ne_kernel_get_version(NEKernelContext *ctx);
+
+/*
+ * ne_kernel_get_win_flags - return capability flags for the environment.
+ *
+ * WinDOS runs in real mode on an 8086, so all protected-mode and
+ * coprocessor flags are cleared.  Returns 0.
+ */
+uint32_t ne_kernel_get_win_flags(NEKernelContext *ctx);
+
+/*
+ * ne_kernel_get_windows_directory - copy the Windows directory path into
+ * 'buf'.
+ *
+ * Copies at most 'size' bytes (including NUL).  Returns the string length
+ * (excluding NUL) on success, or 0 on failure.
+ */
+int ne_kernel_get_windows_directory(NEKernelContext *ctx,
+                                     char *buf, int size);
+
+/*
+ * ne_kernel_get_system_directory - copy the Windows SYSTEM directory
+ * path into 'buf'.
+ *
+ * Copies at most 'size' bytes (including NUL).  Returns the string length
+ * (excluding NUL) on success, or 0 on failure.
+ */
+int ne_kernel_get_system_directory(NEKernelContext *ctx,
+                                    char *buf, int size);
+
+/*
+ * ne_kernel_get_dos_environment - return a pointer to the DOS environment
+ * block.
+ *
+ * Stub: returns NULL.
+ */
+const char *ne_kernel_get_dos_environment(NEKernelContext *ctx);
+
+/*
+ * ne_kernel_win_exec - launch a child application.
+ *
+ * Stub: returns 0 (not yet implemented).
+ */
+uint16_t ne_kernel_win_exec(NEKernelContext *ctx, const char *cmdLine,
+                             uint16_t cmdShow);
+
+/*
+ * ne_kernel_exit_windows - initiate a clean shutdown.
+ *
+ * Stub: returns 0.
+ */
+int ne_kernel_exit_windows(NEKernelContext *ctx, uint32_t dwReserved);
+
+/*
+ * ne_kernel_fatal_exit - terminate with error code.
+ *
+ * Calls exit() with the given code.
+ */
+void ne_kernel_fatal_exit(NEKernelContext *ctx, int code);
+
+/*
+ * ne_kernel_fatal_app_exit - display an error message and terminate.
+ *
+ * Prints 'msg' to stderr and calls exit(1).
+ */
+void ne_kernel_fatal_app_exit(NEKernelContext *ctx, uint16_t action,
+                               const char *msg);
+
+/*
+ * ne_kernel_get_tick_count - return the system tick count in milliseconds.
+ *
+ * Delegates to ne_drv_get_tick_count() if a driver context is attached.
+ * Otherwise returns 0.
+ */
+uint32_t ne_kernel_get_tick_count(NEKernelContext *ctx);
+
+/*
+ * ne_kernel_catch - save the execution context for non-local jump.
+ *
+ * Wraps setjmp().  Returns 0 when called directly; non-zero when
+ * restored via ne_kernel_throw().  Returns -1 if ctx or buf is NULL
+ * or ctx is not initialised.  Implemented as a macro because
+ * setjmp must be called from the frame that will longjmp back.
+ */
+#define ne_kernel_catch(ctx, buf) \
+    (((ctx) != NULL && (ctx)->initialized && (buf) != NULL) \
+        ? setjmp((buf)->env) : -1)
+
+/*
+ * ne_kernel_throw - restore a previously saved context.
+ *
+ * Wraps longjmp().  'retval' is the value returned by the matching
+ * ne_kernel_catch().
+ */
+void ne_kernel_throw(NEKernelContext *ctx, NECatchBuf *buf, int retval);
+
+/*
+ * ne_kernel_make_proc_instance - create a callback thunk.
+ *
+ * In real mode no thunk is needed; the function pointer is returned as-is.
+ */
+void *ne_kernel_make_proc_instance(NEKernelContext *ctx, void *proc,
+                                    uint16_t hInstance);
+
+/*
+ * ne_kernel_free_proc_instance - free a callback thunk.
+ *
+ * No-op in real mode.
+ */
+void ne_kernel_free_proc_instance(NEKernelContext *ctx, void *proc);
+
+/*
+ * ne_kernel_open_file - open, test, or delete a file with OFSTRUCT semantics.
+ *
+ * 'style' is a combination of NE_OF_* flags.  The OFSTRUCT is filled in
+ * with the result.  Returns a non-negative file handle on success, or
+ * NE_KERNEL_HFILE_ERROR on failure.
+ */
+int ne_kernel_open_file(NEKernelContext *ctx, const char *path,
+                         NEOfStruct *ofs, uint16_t style);
+
+/*
+ * ne_kernel_output_debug_string - emit a debug message.
+ *
+ * Prints 'msg' to stderr.
+ */
+void ne_kernel_output_debug_string(NEKernelContext *ctx, const char *msg);
+
+/*
+ * ne_kernel_set_error_mode - set the error handling mode.
+ *
+ * Returns the previous error mode.
+ */
+uint16_t ne_kernel_set_error_mode(NEKernelContext *ctx, uint16_t mode);
+
+/*
+ * ne_kernel_get_last_error - return the last error code.
+ */
+uint16_t ne_kernel_get_last_error(NEKernelContext *ctx);
+
+/*
+ * ne_kernel_is_task - test whether a handle refers to a valid task.
+ *
+ * Returns non-zero if 'hTask' is in the task table, 0 otherwise.
+ */
+int ne_kernel_is_task(NEKernelContext *ctx, uint16_t hTask);
+
+/*
+ * ne_kernel_get_num_tasks - return the number of active tasks.
+ */
+uint16_t ne_kernel_get_num_tasks(NEKernelContext *ctx);
 
 #endif /* NE_KERNEL_H */

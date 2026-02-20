@@ -2,6 +2,39 @@
 
 All notable changes to WinDOS are documented in this file.
 
+## [Unreleased] – Phase A: Critical KERNEL.EXE API Expansion
+
+### Added
+
+- **Phase A KERNEL.EXE APIs** (`ne_kernel`): 20 new critical API stubs
+  covering the APIs required by nearly every Windows 3.1 application:
+  - `GetVersion` / `GetWinFlags` – OS version (3.10) and capability flags
+  - `GetWindowsDirectory` / `GetSystemDirectory` – directory path queries
+  - `GetDOSEnvironment` – DOS environment pointer (stub)
+  - `WinExec` – child application launching (stub)
+  - `ExitWindows` – clean shutdown (stub)
+  - `FatalExit` / `FatalAppExit` – error termination
+  - `GetTickCount` – tick counter delegating to `ne_driver`
+  - `Catch` / `Throw` – non-local jumps via setjmp/longjmp
+  - `MakeProcInstance` / `FreeProcInstance` – callback thunks (passthrough
+    in real mode)
+  - `OpenFile` – file operations with ofstruct semantics (OF_READ,
+    OF_WRITE, OF_READWRITE, OF_EXIST, OF_DELETE)
+  - `OutputDebugString` – debug output to stderr
+  - `SetErrorMode` / `GetLastError` – error mode management
+  - `IsTask` / `GetNumTasks` – task table queries
+
+- **Driver integration**: `ne_kernel_set_driver()` to attach a driver
+  context for `GetTickCount` delegation.
+
+- **22 new unit tests** for all Phase A APIs (60 kernel tests total).
+
+### Changed
+
+- Fixed `GlobalGetAtomName` ordinal from 166 to 167 to match the
+  correct Windows 3.1 KERNEL.EXE ordinal assignment.
+- Updated Makefile to link `ne_driver.c` in the kernel test build.
+
 ## [1.0.0] - 2026-02-20
 
 ### Summary
