@@ -48,6 +48,9 @@ MEM_OBJ     := $(BUILD_DIR)/ne_mem.obj
 TRAP_SRC    := $(SRC_DIR)/ne_trap.c
 TRAP_OBJ    := $(BUILD_DIR)/ne_trap.obj
 
+INTEGRATE_SRC  := $(SRC_DIR)/ne_integrate.c
+INTEGRATE_OBJ  := $(BUILD_DIR)/ne_integrate.obj
+
 TEST_SRC         := $(TEST_DIR)/test_ne_parser.c
 TEST_OBJ         := $(BUILD_DIR)/test_ne_parser.obj
 TEST_BIN         := $(BUILD_DIR)/test_ne_parser.exe
@@ -76,9 +79,13 @@ TRAP_TEST_SRC    := $(TEST_DIR)/test_ne_trap.c
 TRAP_TEST_OBJ    := $(BUILD_DIR)/test_ne_trap.obj
 TRAP_TEST_BIN    := $(BUILD_DIR)/test_ne_trap.exe
 
+INTEGRATE_TEST_SRC  := $(TEST_DIR)/test_ne_integrate.c
+INTEGRATE_TEST_OBJ  := $(BUILD_DIR)/test_ne_integrate.obj
+INTEGRATE_TEST_BIN  := $(BUILD_DIR)/test_ne_integrate.exe
+
 .PHONY: all test clean
 
-all: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN)
+all: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN) $(INTEGRATE_TEST_BIN)
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
@@ -107,6 +114,9 @@ $(MEM_OBJ): $(MEM_SRC) $(SRC_DIR)/ne_mem.h | $(BUILD_DIR)
 $(TRAP_OBJ): $(TRAP_SRC) $(SRC_DIR)/ne_trap.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
+$(INTEGRATE_OBJ): $(INTEGRATE_SRC) $(SRC_DIR)/ne_integrate.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -fo=$@ $<
+
 $(TEST_OBJ): $(TEST_SRC) $(SRC_DIR)/ne_parser.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
@@ -126,6 +136,9 @@ $(TASK_TEST_OBJ): $(TASK_TEST_SRC) $(SRC_DIR)/ne_task.h $(SRC_DIR)/ne_mem.h | $(
 	$(CC) $(CFLAGS) -fo=$@ $<
 
 $(TRAP_TEST_OBJ): $(TRAP_TEST_SRC) $(SRC_DIR)/ne_trap.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -fo=$@ $<
+
+$(INTEGRATE_TEST_OBJ): $(INTEGRATE_TEST_SRC) $(SRC_DIR)/ne_integrate.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
 $(TEST_BIN): $(TEST_OBJ) $(PARSER_OBJ) | $(BUILD_DIR)
@@ -149,7 +162,10 @@ $(TASK_TEST_BIN): $(TASK_TEST_OBJ) $(TASK_OBJ) $(MEM_OBJ) | $(BUILD_DIR)
 $(TRAP_TEST_BIN): $(TRAP_TEST_OBJ) $(TRAP_OBJ) | $(BUILD_DIR)
 	$(LD) $(LDFLAGS) name $@ file $(TRAP_TEST_OBJ),$(TRAP_OBJ)
 
-test: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN)
+$(INTEGRATE_TEST_BIN): $(INTEGRATE_TEST_OBJ) $(INTEGRATE_OBJ) | $(BUILD_DIR)
+	$(LD) $(LDFLAGS) name $@ file $(INTEGRATE_TEST_OBJ),$(INTEGRATE_OBJ)
+
+test: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN) $(INTEGRATE_TEST_BIN)
 	@echo "--- Running NE parser tests ---"
 	$(TEST_BIN)
 	@echo "--- Running NE loader tests ---"
@@ -164,6 +180,8 @@ test: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPE
 	$(TASK_TEST_BIN)
 	@echo "--- Running NE exception and trap handling tests ---"
 	$(TRAP_TEST_BIN)
+	@echo "--- Running NE integration management tests ---"
+	$(INTEGRATE_TEST_BIN)
 
 clean:
 	rm -rf $(BUILD_DIR)

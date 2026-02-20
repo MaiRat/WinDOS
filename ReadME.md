@@ -85,15 +85,15 @@ This roadmap breaks the work into small milestones to implement a full Windows 3
    - [x] Deliverable: predictable fault handling and improved debugging visibility.
 
 8. **Integration steps**
-   - [ ] Identify the minimal set of kernel services needed by the Windows 3.1 GUI layer.
-   - [ ] Integrate kernel services with the display/GUI layer incrementally, one subsystem at a time.
-   - [ ] Integrate kernel services with device drivers (keyboard, timer, display).
-   - [ ] Integrate with system DLLs (KERNEL.EXE, USER.EXE, GDI.EXE) interfaces.
-   - [ ] Write compatibility tests in the DOS environment for each integration stage before proceeding.
-   - [ ] Gate promotion to the next stage on all prior-stage compatibility tests passing.
-   - [ ] Track regressions per subsystem and document fallback/bypass paths during migration.
-   - [ ] Document integration status, known gaps, and workarounds per subsystem.
-   - [ ] Deliverable: staged compatibility across core Windows 3.1 subsystems.
+   - [x] Identify the minimal set of kernel services needed by the Windows 3.1 GUI layer.
+   - [x] Integrate kernel services with the display/GUI layer incrementally, one subsystem at a time.
+   - [x] Integrate kernel services with device drivers (keyboard, timer, display).
+   - [x] Integrate with system DLLs (KERNEL.EXE, USER.EXE, GDI.EXE) interfaces.
+   - [x] Write compatibility tests in the DOS environment for each integration stage before proceeding.
+   - [x] Gate promotion to the next stage on all prior-stage compatibility tests passing.
+   - [x] Track regressions per subsystem and document fallback/bypass paths during migration.
+   - [x] Document integration status, known gaps, and workarounds per subsystem.
+   - [x] Deliverable: staged compatibility across core Windows 3.1 subsystems.
 
 9. **Full integration**
    - [ ] Perform end-to-end boot sequence validation with the custom kernel replacing the original.
