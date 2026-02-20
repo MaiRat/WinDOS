@@ -542,59 +542,174 @@ int ne_kernel_post_event(NEKernelContext *ctx, uint16_t hTask)
 }
 
 /* =========================================================================
- * String / resource stubs
+ * String / resource functions – wired to ne_resource (Phase G)
  * ===================================================================== */
+
+/*
+ * res_find_by_handle - locate a resource entry by its handle.
+ */
+static NEResEntry *res_find_by_handle(NEResTable *tbl, NEResHandle handle)
+{
+    uint16_t i;
+
+    if (!tbl || !tbl->entries || handle == NE_RES_HANDLE_INVALID)
+        return NULL;
+
+    for (i = 0; i < tbl->capacity; i++) {
+        if (tbl->entries[i].handle == handle)
+            return &tbl->entries[i];
+    }
+    return NULL;
+}
 
 int ne_kernel_load_string(NEKernelContext *ctx, uint16_t hModule,
                            uint16_t uID, char *buf, int buf_size)
 {
+    NEResEntry    *entry;
+    uint16_t       bundle_id;
+    uint16_t       str_idx;
+    uint32_t       off;
+    uint16_t       i;
+
     (void)hModule;
-    (void)uID;
 
     if (!ctx || !ctx->initialized || !buf || buf_size <= 0)
         return 0;
 
-    /* Stub: no string resource tables are loaded yet. */
-    buf[0] = '\0';
-    return 0;
+    if (!ctx->res) {
+        buf[0] = '\0';
+        return 0;
+    }
+
+    /*
+     * Windows 3.1 NE string resources are stored in RT_STRING bundles.
+     * Each bundle holds 16 strings.  The bundle ordinal for a given
+     * string ID is (uID / 16) + 1; the index within the bundle is
+     * uID % 16.
+     *
+     * Each string in the bundle is length-prefixed: one byte giving
+     * the character count followed by that many bytes of text.
+     */
+    bundle_id = (uint16_t)((uID >> 4) + 1u);
+    str_idx   = (uint16_t)(uID & 0x0Fu);
+
+    entry = ne_res_find_by_id(ctx->res, RT_STRING, bundle_id);
+    if (!entry || !entry->raw_data || entry->raw_size == 0) {
+        buf[0] = '\0';
+        return 0;
+    }
+
+    /* Walk through the Pascal-style strings to reach str_idx */
+    off = 0;
+    for (i = 0; i < str_idx; i++) {
+        uint8_t slen;
+        if (off >= entry->raw_size) {
+            buf[0] = '\0';
+            return 0;
+        }
+        slen = entry->raw_data[off];
+        off += 1u + slen;
+    }
+
+    if (off >= entry->raw_size) {
+        buf[0] = '\0';
+        return 0;
+    }
+
+    {
+        uint8_t  slen = entry->raw_data[off];
+        uint16_t copy_len;
+        off++;
+        if (slen == 0 || off + slen > entry->raw_size) {
+            buf[0] = '\0';
+            return (slen == 0) ? 0 : 0;
+        }
+        copy_len = slen;
+        if ((int)copy_len >= buf_size)
+            copy_len = (uint16_t)(buf_size - 1);
+        memcpy(buf, entry->raw_data + off, copy_len);
+        buf[copy_len] = '\0';
+        return (int)copy_len;
+    }
 }
 
 uint32_t ne_kernel_find_resource(NEKernelContext *ctx, uint16_t hModule,
                                   const char *name, const char *type)
 {
+    NEResEntry *entry;
+    uint16_t    type_id;
+    uint16_t    name_id;
+
     (void)hModule;
-    (void)name;
-    (void)type;
 
     if (!ctx || !ctx->initialized)
         return 0;
 
-    /* Stub: resource management is deferred to Phase 5. */
-    return 0;
+    if (!ctx->res || !name || !type)
+        return 0;
+
+    /*
+     * Windows 3.1 uses MAKEINTRESOURCE() to encode integer IDs as
+     * pointer values.  If the pointer value fits in 16 bits, treat
+     * it as an ordinal; otherwise treat it as a string name.
+     */
+    type_id = (uint16_t)(uintptr_t)type;
+    name_id = (uint16_t)(uintptr_t)name;
+
+    if ((uintptr_t)type <= 0xFFFFu && (uintptr_t)name <= 0xFFFFu) {
+        entry = ne_res_find_by_id(ctx->res, type_id, name_id);
+    } else if ((uintptr_t)type <= 0xFFFFu) {
+        entry = ne_res_find_by_name(ctx->res, type_id, name);
+    } else if ((uintptr_t)name <= 0xFFFFu) {
+        /* String type with ordinal name – not common, fall back */
+        entry = NULL;
+    } else {
+        /* Both are real string pointers – not directly supported */
+        entry = NULL;
+    }
+
+    if (!entry)
+        return 0;
+
+    return (uint32_t)entry->handle;
 }
 
 uint16_t ne_kernel_load_resource(NEKernelContext *ctx, uint16_t hModule,
                                   uint32_t hResInfo)
 {
+    NEResEntry *entry;
+
     (void)hModule;
-    (void)hResInfo;
 
     if (!ctx || !ctx->initialized)
         return 0;
 
-    /* Stub: resource management is deferred to Phase 5. */
-    return 0;
+    if (!ctx->res || hResInfo == 0)
+        return 0;
+
+    entry = res_find_by_handle(ctx->res, (NEResHandle)hResInfo);
+    if (!entry)
+        return 0;
+
+    /* Data is already in memory; return the handle as the data handle */
+    return (uint16_t)entry->handle;
 }
 
 void *ne_kernel_lock_resource(NEKernelContext *ctx, uint16_t hResData)
 {
-    (void)hResData;
+    NEResEntry *entry;
 
     if (!ctx || !ctx->initialized)
         return NULL;
 
-    /* Stub: resource management is deferred to Phase 5. */
-    return NULL;
+    if (!ctx->res || hResData == 0)
+        return NULL;
+
+    entry = res_find_by_handle(ctx->res, (NEResHandle)hResData);
+    if (!entry)
+        return NULL;
+
+    return (void *)entry->raw_data;
 }
 
 /* =========================================================================
@@ -724,6 +839,15 @@ int ne_kernel_set_driver(NEKernelContext *ctx, void *driver)
         return NE_KERNEL_ERR_INIT;
 
     ctx->driver = driver;
+    return NE_KERNEL_OK;
+}
+
+int ne_kernel_set_resource_table(NEKernelContext *ctx, NEResTable *res)
+{
+    if (!ctx || !ctx->initialized)
+        return NE_KERNEL_ERR_INIT;
+
+    ctx->res = res;
     return NE_KERNEL_OK;
 }
 
