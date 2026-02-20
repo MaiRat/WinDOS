@@ -2,6 +2,43 @@
 
 All notable changes to WinDOS are documented in this file.
 
+## [Unreleased] – Phase E: GDI.EXE Rendering
+
+### Added
+
+- **Phase E GDI.EXE Rendering** (`ne_gdi`): Full rendering backend
+  replacing the Phase 3 drawing stubs with real framebuffer-based
+  implementations:
+  - VGA graphics mode rendering backend with 640×480 8-bit framebuffer
+  - Built-in 8×8 bitmap font covering printable ASCII (chars 32–126)
+  - `TextOut` with bitmap font rendering to framebuffer
+  - `SetPixel` / `GetPixel` with real framebuffer access and bounds
+    checking
+  - Bresenham line algorithm for `LineTo`
+  - `Rectangle` with pen outline and brush fill
+  - `Ellipse` with midpoint ellipse algorithm
+  - `Polygon` / `Polyline` for multi-point shape drawing
+  - `CreatePen` / `CreateBrush` / `CreateFont` – GDI object creation
+  - `SelectObject` / `DeleteObject` – GDI object management
+  - `SetTextColor` / `SetBkColor` / `SetBkMode` – color and background
+    mode attributes
+  - `GetTextMetrics` / `GetTextExtent` – text measurement
+  - `BitBlt` / `StretchBlt` / `PatBlt` – raster operations (SRCCOPY,
+    SRCPAINT, SRCAND, SRCINVERT, BLACKNESS, WHITENESS, PATCOPY)
+  - `CreateCompatibleDC` – off-screen device context with own framebuffer
+  - `CreateCompatibleBitmap` / `CreateBitmap` / `CreateDIBitmap` – bitmap
+    and DIB object support
+
+- **New data structures**: `NEGdiPen`, `NEGdiBrush`, `NEGdiFont`,
+  `NEGdiBitmap`, `NEGdiObject`, `NEGdiTextMetrics`, `COLORREF` type
+  with `RGB` macro.
+
+- **Extended device context**: selected pen/brush/font handles, text
+  color, background color, background mode, per-DC framebuffer for
+  compatible DCs.
+
+- **52 new unit tests** for all Phase E APIs (74 GDI tests total).
+
 ## [Unreleased] – Phase D: USER.EXE Expansion
 
 ### Added

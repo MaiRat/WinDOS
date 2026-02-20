@@ -294,19 +294,19 @@ Required for dialog-based applications and richer window management.
 
 Required for any visible graphical output.
 
-- [ ] Implement actual rendering backend for VGA graphics mode
-- [ ] Implement `TextOut` with bitmap font rendering
-- [ ] Implement line and shape drawing (`MoveTo`, `LineTo`, `Rectangle`,
+- [x] Implement actual rendering backend for VGA graphics mode
+- [x] Implement `TextOut` with bitmap font rendering
+- [x] Implement line and shape drawing (`MoveTo`, `LineTo`, `Rectangle`,
       `Ellipse`, `Polygon`, `Polyline`)
-- [ ] Implement `SetPixel` / `GetPixel` with real framebuffer access
-- [ ] Implement GDI object creation (`CreatePen`, `CreateBrush`,
+- [x] Implement `SetPixel` / `GetPixel` with real framebuffer access
+- [x] Implement GDI object creation (`CreatePen`, `CreateBrush`,
       `CreateFont`)
-- [ ] Implement `SelectObject` / `DeleteObject`
-- [ ] Implement `SetTextColor` / `SetBkColor` / `SetBkMode`
-- [ ] Implement `GetTextMetrics` / `GetTextExtent`
-- [ ] Implement `BitBlt` / `StretchBlt` / `PatBlt`
-- [ ] Implement `CreateCompatibleDC` / `CreateCompatibleBitmap`
-- [ ] Implement bitmap and DIB support (`CreateBitmap`,
+- [x] Implement `SelectObject` / `DeleteObject`
+- [x] Implement `SetTextColor` / `SetBkColor` / `SetBkMode`
+- [x] Implement `GetTextMetrics` / `GetTextExtent`
+- [x] Implement `BitBlt` / `StretchBlt` / `PatBlt`
+- [x] Implement `CreateCompatibleDC` / `CreateCompatibleBitmap`
+- [x] Implement bitmap and DIB support (`CreateBitmap`,
       `CreateDIBitmap`)
 
 ### Phase F – Driver Completion
