@@ -463,7 +463,7 @@ int ne_user_message_box(NEUserContext *ctx, NEUserHWND hwnd,
     switch (type & 0x000Fu) {
     case MB_OK:         return IDOK;
     case MB_OKCANCEL:   return IDOK;
-    case MB_YESNOCANCEL:return IDYES;
+    case MB_YESNOCANCEL: return IDYES;
     case MB_YESNO:      return IDYES;
     default:            return IDOK;
     }
@@ -1149,15 +1149,14 @@ int ne_user_append_menu(NEUserContext *ctx, uint16_t hmenu,
             if (menu->item_count >= NE_USER_MENU_CAP)
                 return NE_USER_ERR_FULL;
 
-            menu->items[menu->item_count].id     = id;
-            menu->items[menu->item_count].active  = 1;
+            NEUserMenuItem *item = &menu->items[menu->item_count];
+            item->id     = id;
+            item->active = 1;
             if (text) {
-                strncpy(menu->items[menu->item_count].text, text,
-                        NE_USER_CLASSNAME_MAX - 1u);
-                menu->items[menu->item_count]
-                    .text[NE_USER_CLASSNAME_MAX - 1u] = '\0';
+                strncpy(item->text, text, NE_USER_CLASSNAME_MAX - 1u);
+                item->text[NE_USER_CLASSNAME_MAX - 1u] = '\0';
             } else {
-                menu->items[menu->item_count].text[0] = '\0';
+                item->text[0] = '\0';
             }
             menu->item_count++;
             return NE_USER_OK;
