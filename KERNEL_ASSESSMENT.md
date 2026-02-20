@@ -311,11 +311,11 @@ Required for any visible graphical output.
 
 ### Phase F – Driver Completion
 
-- [ ] Expand keyboard scan-code table to cover full 101/102-key layout
-- [ ] Implement graphics-mode display driver (VGA 640×480×16,
+- [x] Expand keyboard scan-code table to cover full 101/102-key layout
+- [x] Implement graphics-mode display driver (VGA 640×480×16,
       320×200×256)
-- [ ] Implement printer driver interface (PRINTER.DRV)
-- [ ] Complete mouse driver with cursor rendering and event coalescing
+- [x] Implement printer driver interface (PRINTER.DRV)
+- [x] Complete mouse driver with cursor rendering and event coalescing
 
 ### Phase G – KERNEL Resource Stub Wiring
 

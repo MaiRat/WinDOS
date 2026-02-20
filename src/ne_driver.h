@@ -103,6 +103,31 @@
 #define VK_F8          0x77u
 #define VK_F9          0x78u
 #define VK_F10         0x79u
+#define VK_F11         0x7Au
+#define VK_F12         0x7Bu
+#define VK_CAPITAL     0x14u   /* Caps Lock                                */
+#define VK_NUMLOCK     0x90u   /* Num Lock                                 */
+#define VK_SCROLL      0x91u   /* Scroll Lock                              */
+#define VK_PRIOR       0x21u   /* Page Up                                  */
+#define VK_NEXT        0x22u   /* Page Down                                */
+#define VK_END         0x23u
+#define VK_HOME        0x24u
+#define VK_INSERT      0x2Du
+#define VK_NUMPAD5     0x65u
+#define VK_MULTIPLY    0x6Au   /* Keypad *                                 */
+#define VK_ADD         0x6Bu   /* Keypad +                                 */
+#define VK_SUBTRACT    0x6Du   /* Keypad -                                 */
+#define VK_OEM_1       0xBAu   /* ;:                                       */
+#define VK_OEM_PLUS    0xBBu   /* =+                                       */
+#define VK_OEM_COMMA   0xBCu   /* ,<                                       */
+#define VK_OEM_MINUS   0xBDu   /* -_                                       */
+#define VK_OEM_PERIOD  0xBEu   /* .>                                       */
+#define VK_OEM_2       0xBFu   /* /?                                       */
+#define VK_OEM_3       0xC0u   /* `~                                       */
+#define VK_OEM_4       0xDBu   /* [{                                       */
+#define VK_OEM_5       0xDCu   /* \|                                       */
+#define VK_OEM_6       0xDDu   /* ]}                                       */
+#define VK_OEM_7       0xDEu   /* '"                                       */
 
 /* -------------------------------------------------------------------------
  * Keyboard message identifiers
@@ -133,6 +158,31 @@
 #define NE_DRV_DISPLAY_COLS      80u  /* text-mode column count            */
 #define NE_DRV_DISPLAY_ROWS      25u  /* text-mode row count               */
 #define NE_DRV_SCANCODE_MAX    0x80u  /* number of scan code entries       */
+
+/* -------------------------------------------------------------------------
+ * Graphics mode constants
+ * ---------------------------------------------------------------------- */
+#define NE_DRV_VMODE_TEXT      0     /* 80x25 text mode (existing)        */
+#define NE_DRV_VMODE_640x480   1     /* VGA 640x480x16 colours            */
+#define NE_DRV_VMODE_320x200   2     /* VGA 320x200x256 colours           */
+
+#define NE_DRV_GFX_WIDTH_HI   640
+#define NE_DRV_GFX_HEIGHT_HI  480
+#define NE_DRV_GFX_WIDTH_LO   320
+#define NE_DRV_GFX_HEIGHT_LO  200
+
+#define NE_DRV_GFX_FB_SIZE_HI (NE_DRV_GFX_WIDTH_HI * NE_DRV_GFX_HEIGHT_HI)
+#define NE_DRV_GFX_FB_SIZE_LO (NE_DRV_GFX_WIDTH_LO * NE_DRV_GFX_HEIGHT_LO)
+
+/* -------------------------------------------------------------------------
+ * Printer driver constants
+ * ---------------------------------------------------------------------- */
+#define NE_DRV_PRINTER_CAP     4u    /* max simultaneous print jobs       */
+
+/* -------------------------------------------------------------------------
+ * Mouse cursor constants
+ * ---------------------------------------------------------------------- */
+#define NE_DRV_CURSOR_SIZE    16u    /* cursor bitmap width/height        */
 
 /* -------------------------------------------------------------------------
  * Keyboard event descriptor
@@ -194,6 +244,11 @@ typedef struct {
     uint8_t  cursor_col;
     uint8_t  default_attr; /* default text attribute (light grey on black) */
     int      installed;    /* non-zero if display driver is active          */
+    int      video_mode;   /* NE_DRV_VMODE_TEXT / 640x480 / 320x200        */
+    uint8_t *framebuffer;  /* graphics-mode framebuffer (heap-allocated)    */
+    uint16_t fb_width;     /* current framebuffer width                     */
+    uint16_t fb_height;    /* current framebuffer height                    */
+    uint32_t fb_size;      /* total framebuffer byte count                  */
 } NEDrvDisplay;
 
 /* -------------------------------------------------------------------------
@@ -218,12 +273,35 @@ typedef struct {
     int16_t  y;            /* current Y position                           */
     uint16_t buttons;      /* current button state                         */
     int      installed;    /* non-zero if INT 33h hook is active            */
+    uint8_t  cursor_bitmap[NE_DRV_CURSOR_SIZE][NE_DRV_CURSOR_SIZE];
+    int      cursor_visible;  /* non-zero if cursor should be rendered     */
+    int16_t  hot_x, hot_y;    /* hotspot offset within cursor bitmap       */
 } NEDrvMouse;
+
+/* -------------------------------------------------------------------------
+ * Printer job descriptor
+ * ---------------------------------------------------------------------- */
+typedef struct {
+    uint16_t job_id;       /* non-zero when active                         */
+    uint16_t page_count;   /* pages started in this job                    */
+    int      in_page;      /* non-zero if between StartPage/EndPage        */
+    char     doc_name[64]; /* document name                                */
+} NEDrvPrintJob;
+
+/* -------------------------------------------------------------------------
+ * Printer driver state
+ * ---------------------------------------------------------------------- */
+typedef struct {
+    NEDrvPrintJob jobs[NE_DRV_PRINTER_CAP];
+    uint16_t job_count;
+    uint16_t next_job_id;
+    int      installed;
+} NEDrvPrinter;
 
 /* -------------------------------------------------------------------------
  * Driver context
  *
- * Owns all four driver subsystems.  Initialise with ne_drv_init();
+ * Owns all driver subsystems.  Initialise with ne_drv_init();
  * release with ne_drv_free().
  * ---------------------------------------------------------------------- */
 typedef struct {
@@ -231,6 +309,7 @@ typedef struct {
     NEDrvTimer     tmr;
     NEDrvDisplay   disp;
     NEDrvMouse     mouse;
+    NEDrvPrinter   printer;
     int            initialized;
 } NEDrvContext;
 
@@ -418,6 +497,42 @@ int ne_drv_disp_get_cursor(const NEDrvContext *ctx,
 int ne_drv_disp_write_string(NEDrvContext *ctx, const char *text,
                              uint8_t attr);
 
+/*
+ * ne_drv_disp_set_mode - switch video mode.
+ *
+ * mode: NE_DRV_VMODE_TEXT, NE_DRV_VMODE_640x480, NE_DRV_VMODE_320x200.
+ * Allocates the graphics framebuffer for non-text modes.
+ */
+int ne_drv_disp_set_mode(NEDrvContext *ctx, int mode);
+
+/*
+ * ne_drv_disp_get_mode - return the current video mode.
+ */
+int ne_drv_disp_get_mode(const NEDrvContext *ctx);
+
+/*
+ * ne_drv_disp_gfx_set_pixel - set a pixel in the graphics framebuffer.
+ */
+int ne_drv_disp_gfx_set_pixel(NEDrvContext *ctx, uint16_t x, uint16_t y,
+                               uint8_t color);
+
+/*
+ * ne_drv_disp_gfx_get_pixel - read a pixel from the graphics framebuffer.
+ */
+int ne_drv_disp_gfx_get_pixel(const NEDrvContext *ctx, uint16_t x,
+                               uint16_t y, uint8_t *color);
+
+/*
+ * ne_drv_disp_gfx_fill_rect - fill a rectangle in the graphics framebuffer.
+ */
+int ne_drv_disp_gfx_fill_rect(NEDrvContext *ctx, uint16_t x, uint16_t y,
+                               uint16_t w, uint16_t h, uint8_t color);
+
+/*
+ * ne_drv_disp_gfx_clear - clear the entire graphics framebuffer.
+ */
+int ne_drv_disp_gfx_clear(NEDrvContext *ctx, uint8_t color);
+
 /* =========================================================================
  * Public API – mouse driver
  * ===================================================================== */
@@ -464,6 +579,74 @@ uint16_t ne_drv_mouse_pending(const NEDrvContext *ctx);
  */
 int ne_drv_mouse_get_position(const NEDrvContext *ctx,
                               int16_t *x, int16_t *y, uint16_t *buttons);
+
+/*
+ * ne_drv_mouse_show_cursor - show or hide the mouse cursor.
+ */
+int ne_drv_mouse_show_cursor(NEDrvContext *ctx, int show);
+
+/*
+ * ne_drv_mouse_set_cursor_bitmap - set the cursor shape and hotspot.
+ */
+int ne_drv_mouse_set_cursor_bitmap(NEDrvContext *ctx,
+    const uint8_t bitmap[NE_DRV_CURSOR_SIZE][NE_DRV_CURSOR_SIZE],
+    int16_t hot_x, int16_t hot_y);
+
+/*
+ * ne_drv_mouse_get_cursor_visible - return cursor visibility state.
+ */
+int ne_drv_mouse_get_cursor_visible(const NEDrvContext *ctx);
+
+/*
+ * ne_drv_mouse_coalesce_moves - coalesce consecutive WM_MOUSEMOVE
+ * events in the queue, keeping only the last of each run.
+ */
+int ne_drv_mouse_coalesce_moves(NEDrvContext *ctx);
+
+/* =========================================================================
+ * Public API – printer driver
+ * ===================================================================== */
+
+/*
+ * ne_drv_printer_install - initialise the printer driver subsystem.
+ */
+int ne_drv_printer_install(NEDrvContext *ctx);
+
+/*
+ * ne_drv_printer_uninstall - shut down the printer driver.
+ */
+int ne_drv_printer_uninstall(NEDrvContext *ctx);
+
+/*
+ * ne_drv_printer_start_doc - begin a new print job.
+ * Returns non-zero job ID on success, 0 on failure.
+ */
+uint16_t ne_drv_printer_start_doc(NEDrvContext *ctx, const char *doc_name);
+
+/*
+ * ne_drv_printer_end_doc - finish a print job normally.
+ */
+int ne_drv_printer_end_doc(NEDrvContext *ctx, uint16_t job_id);
+
+/*
+ * ne_drv_printer_start_page - begin a new page within a job.
+ */
+int ne_drv_printer_start_page(NEDrvContext *ctx, uint16_t job_id);
+
+/*
+ * ne_drv_printer_end_page - finish the current page within a job.
+ */
+int ne_drv_printer_end_page(NEDrvContext *ctx, uint16_t job_id);
+
+/*
+ * ne_drv_printer_abort_doc - cancel a print job.
+ */
+int ne_drv_printer_abort_doc(NEDrvContext *ctx, uint16_t job_id);
+
+/*
+ * ne_drv_printer_get_job_count - return the number of active print jobs.
+ */
+uint16_t ne_drv_printer_get_job_count(const NEDrvContext *ctx);
 
 /* =========================================================================
  * Public API – driver coexistence verification

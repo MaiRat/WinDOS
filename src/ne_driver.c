@@ -13,6 +13,7 @@
 
 #include "ne_driver.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 #ifdef __WATCOMC__
@@ -44,8 +45,8 @@ static const uint8_t g_default_scancode_map[NE_DRV_SCANCODE_MAX] = {
     /* 0x09 */ VK_8,
     /* 0x0A */ VK_9,
     /* 0x0B */ VK_0,
-    /* 0x0C */ 0,          /* minus */
-    /* 0x0D */ 0,          /* equals */
+    /* 0x0C */ VK_OEM_MINUS, /* minus/underscore */
+    /* 0x0D */ VK_OEM_PLUS, /* equals/plus */
     /* 0x0E */ VK_BACK,
     /* 0x0F */ VK_TAB,
     /* 0x10 */ VK_Q,
@@ -58,8 +59,8 @@ static const uint8_t g_default_scancode_map[NE_DRV_SCANCODE_MAX] = {
     /* 0x17 */ VK_I,
     /* 0x18 */ VK_O,
     /* 0x19 */ VK_P,
-    /* 0x1A */ 0,          /* left bracket */
-    /* 0x1B */ 0,          /* right bracket */
+    /* 0x1A */ VK_OEM_4,   /* left bracket */
+    /* 0x1B */ VK_OEM_6,   /* right bracket */
     /* 0x1C */ VK_RETURN,
     /* 0x1D */ VK_CONTROL,
     /* 0x1E */ VK_A,
@@ -71,11 +72,11 @@ static const uint8_t g_default_scancode_map[NE_DRV_SCANCODE_MAX] = {
     /* 0x24 */ VK_J,
     /* 0x25 */ VK_K,
     /* 0x26 */ VK_L,
-    /* 0x27 */ 0,          /* semicolon */
-    /* 0x28 */ 0,          /* apostrophe */
-    /* 0x29 */ 0,          /* grave accent */
+    /* 0x27 */ VK_OEM_1,   /* semicolon */
+    /* 0x28 */ VK_OEM_7,   /* apostrophe */
+    /* 0x29 */ VK_OEM_3,   /* grave accent */
     /* 0x2A */ VK_SHIFT,
-    /* 0x2B */ 0,          /* backslash */
+    /* 0x2B */ VK_OEM_5,   /* backslash */
     /* 0x2C */ VK_Z,
     /* 0x2D */ VK_X,
     /* 0x2E */ VK_C,
@@ -83,14 +84,14 @@ static const uint8_t g_default_scancode_map[NE_DRV_SCANCODE_MAX] = {
     /* 0x30 */ VK_B,
     /* 0x31 */ VK_N,
     /* 0x32 */ VK_M,
-    /* 0x33 */ 0,          /* comma */
-    /* 0x34 */ 0,          /* period */
-    /* 0x35 */ 0,          /* forward slash */
+    /* 0x33 */ VK_OEM_COMMA, /* comma */
+    /* 0x34 */ VK_OEM_PERIOD, /* period */
+    /* 0x35 */ VK_OEM_2,   /* forward slash */
     /* 0x36 */ VK_SHIFT,   /* right shift */
-    /* 0x37 */ 0,          /* keypad * */
+    /* 0x37 */ VK_MULTIPLY, /* keypad * */
     /* 0x38 */ VK_MENU,    /* ALT */
     /* 0x39 */ VK_SPACE,
-    /* 0x3A */ 0,          /* caps lock */
+    /* 0x3A */ VK_CAPITAL,  /* caps lock */
     /* 0x3B */ VK_F1,
     /* 0x3C */ VK_F2,
     /* 0x3D */ VK_F3,
@@ -101,22 +102,27 @@ static const uint8_t g_default_scancode_map[NE_DRV_SCANCODE_MAX] = {
     /* 0x42 */ VK_F8,
     /* 0x43 */ VK_F9,
     /* 0x44 */ VK_F10,
-    /* 0x45 */ 0,          /* num lock */
-    /* 0x46 */ 0,          /* scroll lock */
-    /* 0x47 */ 0,          /* keypad 7 / home */
+    /* 0x45 */ VK_NUMLOCK,  /* num lock */
+    /* 0x46 */ VK_SCROLL,   /* scroll lock */
+    /* 0x47 */ VK_HOME,     /* keypad 7 / home */
     /* 0x48 */ VK_UP,
-    /* 0x49 */ 0,          /* keypad 9 / page up */
-    /* 0x4A */ 0,          /* keypad minus */
+    /* 0x49 */ VK_PRIOR,    /* keypad 9 / page up */
+    /* 0x4A */ VK_SUBTRACT, /* keypad minus */
     /* 0x4B */ VK_LEFT,
-    /* 0x4C */ 0,          /* keypad 5 */
+    /* 0x4C */ VK_NUMPAD5,  /* keypad 5 */
     /* 0x4D */ VK_RIGHT,
-    /* 0x4E */ 0,          /* keypad plus */
-    /* 0x4F */ 0,          /* keypad 1 / end */
+    /* 0x4E */ VK_ADD,      /* keypad plus */
+    /* 0x4F */ VK_END,      /* keypad 1 / end */
     /* 0x50 */ VK_DOWN,
-    /* 0x51 */ 0,          /* keypad 3 / page down */
-    /* 0x52 */ 0,          /* keypad 0 / insert */
+    /* 0x51 */ VK_NEXT,     /* keypad 3 / page down */
+    /* 0x52 */ VK_INSERT,   /* keypad 0 / insert */
     /* 0x53 */ VK_DELETE,
-    /* 0x54..0x7F: unmapped – zero-filled by static initialisation */
+    /* 0x54 */ 0,
+    /* 0x55 */ 0,
+    /* 0x56 */ 0,
+    /* 0x57 */ VK_F11,
+    /* 0x58 */ VK_F12,
+    /* 0x59..0x7F: unmapped – zero-filled by static initialisation */
 };
 
 /* =========================================================================
@@ -129,9 +135,11 @@ int ne_drv_init(NEDrvContext *ctx)
         return NE_DRV_ERR_NULL;
 
     memset(ctx, 0, sizeof(*ctx));
-    ctx->disp.default_attr = 0x07; /* light grey on black */
-    ctx->tmr.next_id       = 1;
-    ctx->initialized       = 1;
+    ctx->disp.default_attr  = 0x07; /* light grey on black */
+    ctx->disp.video_mode    = NE_DRV_VMODE_TEXT;
+    ctx->tmr.next_id        = 1;
+    ctx->printer.next_job_id = 1;
+    ctx->initialized        = 1;
     return NE_DRV_OK;
 }
 
@@ -149,6 +157,14 @@ void ne_drv_free(NEDrvContext *ctx)
         ne_drv_disp_uninstall(ctx);
     if (ctx->mouse.installed)
         ne_drv_mouse_uninstall(ctx);
+    if (ctx->printer.installed)
+        ne_drv_printer_uninstall(ctx);
+
+    /* Free graphics framebuffer if allocated */
+    if (ctx->disp.framebuffer) {
+        free(ctx->disp.framebuffer);
+        ctx->disp.framebuffer = NULL;
+    }
 
     memset(ctx, 0, sizeof(*ctx));
 }
@@ -483,6 +499,14 @@ int ne_drv_disp_uninstall(NEDrvContext *ctx)
     if (!ctx->initialized)
         return NE_DRV_ERR_INIT;
 
+    if (ctx->disp.framebuffer) {
+        free(ctx->disp.framebuffer);
+        ctx->disp.framebuffer = NULL;
+    }
+    ctx->disp.fb_width  = 0;
+    ctx->disp.fb_height = 0;
+    ctx->disp.fb_size   = 0;
+    ctx->disp.video_mode = NE_DRV_VMODE_TEXT;
     ctx->disp.installed = 0;
     return NE_DRV_OK;
 }
@@ -611,6 +635,140 @@ int ne_drv_disp_write_string(NEDrvContext *ctx, const char *text,
     ctx->disp.cursor_row = r;
     ctx->disp.cursor_col = c;
 
+    return NE_DRV_OK;
+}
+
+/* =========================================================================
+ * Display driver – graphics mode
+ * ===================================================================== */
+
+int ne_drv_disp_set_mode(NEDrvContext *ctx, int mode)
+{
+    if (!ctx)
+        return NE_DRV_ERR_NULL;
+    if (!ctx->initialized)
+        return NE_DRV_ERR_INIT;
+
+    /* Free existing framebuffer */
+    if (ctx->disp.framebuffer) {
+        free(ctx->disp.framebuffer);
+        ctx->disp.framebuffer = NULL;
+    }
+    ctx->disp.fb_width  = 0;
+    ctx->disp.fb_height = 0;
+    ctx->disp.fb_size   = 0;
+
+    switch (mode) {
+    case NE_DRV_VMODE_TEXT:
+        ctx->disp.video_mode = NE_DRV_VMODE_TEXT;
+        break;
+    case NE_DRV_VMODE_640x480:
+        ctx->disp.fb_width  = NE_DRV_GFX_WIDTH_HI;
+        ctx->disp.fb_height = NE_DRV_GFX_HEIGHT_HI;
+        ctx->disp.fb_size   = NE_DRV_GFX_FB_SIZE_HI;
+        ctx->disp.framebuffer = (uint8_t *)calloc(1, ctx->disp.fb_size);
+        if (!ctx->disp.framebuffer)
+            return NE_DRV_ERR_FULL;
+        ctx->disp.video_mode = NE_DRV_VMODE_640x480;
+        break;
+    case NE_DRV_VMODE_320x200:
+        ctx->disp.fb_width  = NE_DRV_GFX_WIDTH_LO;
+        ctx->disp.fb_height = NE_DRV_GFX_HEIGHT_LO;
+        ctx->disp.fb_size   = NE_DRV_GFX_FB_SIZE_LO;
+        ctx->disp.framebuffer = (uint8_t *)calloc(1, ctx->disp.fb_size);
+        if (!ctx->disp.framebuffer)
+            return NE_DRV_ERR_FULL;
+        ctx->disp.video_mode = NE_DRV_VMODE_320x200;
+        break;
+    default:
+        return NE_DRV_ERR_BAD_ID;
+    }
+
+    return NE_DRV_OK;
+}
+
+int ne_drv_disp_get_mode(const NEDrvContext *ctx)
+{
+    if (!ctx || !ctx->initialized)
+        return NE_DRV_VMODE_TEXT;
+    return ctx->disp.video_mode;
+}
+
+int ne_drv_disp_gfx_set_pixel(NEDrvContext *ctx, uint16_t x, uint16_t y,
+                               uint8_t color)
+{
+    uint32_t offset;
+
+    if (!ctx)
+        return NE_DRV_ERR_NULL;
+    if (!ctx->initialized)
+        return NE_DRV_ERR_INIT;
+    if (!ctx->disp.framebuffer)
+        return NE_DRV_ERR_INIT;
+    if (x >= ctx->disp.fb_width || y >= ctx->disp.fb_height)
+        return NE_DRV_ERR_BAD_ID;
+
+    offset = (uint32_t)y * ctx->disp.fb_width + x;
+    ctx->disp.framebuffer[offset] = color;
+    return NE_DRV_OK;
+}
+
+int ne_drv_disp_gfx_get_pixel(const NEDrvContext *ctx, uint16_t x,
+                               uint16_t y, uint8_t *color)
+{
+    uint32_t offset;
+
+    if (!ctx)
+        return NE_DRV_ERR_NULL;
+    if (!ctx->initialized)
+        return NE_DRV_ERR_INIT;
+    if (!color)
+        return NE_DRV_ERR_NULL;
+    if (!ctx->disp.framebuffer)
+        return NE_DRV_ERR_INIT;
+    if (x >= ctx->disp.fb_width || y >= ctx->disp.fb_height)
+        return NE_DRV_ERR_BAD_ID;
+
+    offset = (uint32_t)y * ctx->disp.fb_width + x;
+    *color = ctx->disp.framebuffer[offset];
+    return NE_DRV_OK;
+}
+
+int ne_drv_disp_gfx_fill_rect(NEDrvContext *ctx, uint16_t x, uint16_t y,
+                               uint16_t w, uint16_t h, uint8_t color)
+{
+    uint16_t row, col;
+    uint16_t x_end, y_end;
+
+    if (!ctx)
+        return NE_DRV_ERR_NULL;
+    if (!ctx->initialized)
+        return NE_DRV_ERR_INIT;
+    if (!ctx->disp.framebuffer)
+        return NE_DRV_ERR_INIT;
+
+    x_end = (x + w > ctx->disp.fb_width)  ? ctx->disp.fb_width  : (x + w);
+    y_end = (y + h > ctx->disp.fb_height) ? ctx->disp.fb_height : (y + h);
+
+    for (row = y; row < y_end; row++) {
+        for (col = x; col < x_end; col++) {
+            ctx->disp.framebuffer[(uint32_t)row * ctx->disp.fb_width + col] =
+                color;
+        }
+    }
+    return NE_DRV_OK;
+}
+
+int ne_drv_disp_gfx_clear(NEDrvContext *ctx, uint8_t color)
+{
+    if (!ctx)
+        return NE_DRV_ERR_NULL;
+    if (!ctx->initialized)
+        return NE_DRV_ERR_INIT;
+    if (!ctx->disp.framebuffer)
+        return NE_DRV_ERR_INIT;
+
+    memset(ctx->disp.framebuffer, color, ctx->disp.fb_size);
     return NE_DRV_OK;
 }
 
@@ -752,6 +910,212 @@ int ne_drv_mouse_get_position(const NEDrvContext *ctx,
     *buttons = ctx->mouse.buttons;
 
     return NE_DRV_OK;
+}
+
+int ne_drv_mouse_show_cursor(NEDrvContext *ctx, int show)
+{
+    if (!ctx)
+        return NE_DRV_ERR_NULL;
+    if (!ctx->initialized)
+        return NE_DRV_ERR_INIT;
+
+    ctx->mouse.cursor_visible = show ? 1 : 0;
+    return NE_DRV_OK;
+}
+
+int ne_drv_mouse_set_cursor_bitmap(NEDrvContext *ctx,
+    const uint8_t bitmap[NE_DRV_CURSOR_SIZE][NE_DRV_CURSOR_SIZE],
+    int16_t hot_x, int16_t hot_y)
+{
+    if (!ctx)
+        return NE_DRV_ERR_NULL;
+    if (!ctx->initialized)
+        return NE_DRV_ERR_INIT;
+    if (!bitmap)
+        return NE_DRV_ERR_NULL;
+
+    memcpy(ctx->mouse.cursor_bitmap, bitmap,
+           NE_DRV_CURSOR_SIZE * NE_DRV_CURSOR_SIZE);
+    ctx->mouse.hot_x = hot_x;
+    ctx->mouse.hot_y = hot_y;
+    return NE_DRV_OK;
+}
+
+int ne_drv_mouse_get_cursor_visible(const NEDrvContext *ctx)
+{
+    if (!ctx || !ctx->initialized)
+        return 0;
+    return ctx->mouse.cursor_visible;
+}
+
+int ne_drv_mouse_coalesce_moves(NEDrvContext *ctx)
+{
+    NEDrvMouseEvent temp[NE_DRV_MOUSE_EVENT_CAP];
+    uint16_t i, src, dst;
+
+    if (!ctx)
+        return NE_DRV_ERR_NULL;
+    if (!ctx->initialized)
+        return NE_DRV_ERR_INIT;
+
+    if (ctx->mouse.count <= 1)
+        return NE_DRV_OK;
+
+    /* Copy events from the circular queue into a flat array */
+    src = ctx->mouse.head;
+    for (i = 0; i < ctx->mouse.count; i++) {
+        temp[i] = ctx->mouse.events[src];
+        src = (uint16_t)((src + 1u) % NE_DRV_MOUSE_EVENT_CAP);
+    }
+
+    /* Compact: skip WM_MOUSEMOVE if the next event is also WM_MOUSEMOVE */
+    dst = 0;
+    for (i = 0; i < ctx->mouse.count; i++) {
+        if (temp[i].message == WM_MOUSEMOVE &&
+            i + 1 < ctx->mouse.count &&
+            temp[i + 1].message == WM_MOUSEMOVE) {
+            continue; /* skip this intermediate move */
+        }
+        ctx->mouse.events[dst] = temp[i];
+        dst++;
+    }
+
+    ctx->mouse.head  = 0;
+    ctx->mouse.tail  = dst;
+    ctx->mouse.count = dst;
+    return NE_DRV_OK;
+}
+
+/* =========================================================================
+ * Printer driver
+ * ===================================================================== */
+
+int ne_drv_printer_install(NEDrvContext *ctx)
+{
+    if (!ctx)
+        return NE_DRV_ERR_NULL;
+    if (!ctx->initialized)
+        return NE_DRV_ERR_INIT;
+
+    memset(ctx->printer.jobs, 0, sizeof(ctx->printer.jobs));
+    ctx->printer.job_count   = 0;
+    ctx->printer.next_job_id = 1;
+    ctx->printer.installed   = 1;
+    return NE_DRV_OK;
+}
+
+int ne_drv_printer_uninstall(NEDrvContext *ctx)
+{
+    if (!ctx)
+        return NE_DRV_ERR_NULL;
+    if (!ctx->initialized)
+        return NE_DRV_ERR_INIT;
+
+    memset(ctx->printer.jobs, 0, sizeof(ctx->printer.jobs));
+    ctx->printer.job_count = 0;
+    ctx->printer.installed = 0;
+    return NE_DRV_OK;
+}
+
+uint16_t ne_drv_printer_start_doc(NEDrvContext *ctx, const char *doc_name)
+{
+    uint16_t i;
+
+    if (!ctx || !ctx->initialized || !ctx->printer.installed)
+        return 0;
+    if (ctx->printer.job_count >= NE_DRV_PRINTER_CAP)
+        return 0;
+
+    for (i = 0; i < NE_DRV_PRINTER_CAP; i++) {
+        if (ctx->printer.jobs[i].job_id == 0) {
+            ctx->printer.jobs[i].job_id     = ctx->printer.next_job_id++;
+            ctx->printer.jobs[i].page_count = 0;
+            ctx->printer.jobs[i].in_page    = 0;
+            if (doc_name) {
+                strncpy(ctx->printer.jobs[i].doc_name, doc_name, 63);
+                ctx->printer.jobs[i].doc_name[63] = '\0';
+            } else {
+                ctx->printer.jobs[i].doc_name[0] = '\0';
+            }
+            ctx->printer.job_count++;
+            return ctx->printer.jobs[i].job_id;
+        }
+    }
+    return 0;
+}
+
+int ne_drv_printer_end_doc(NEDrvContext *ctx, uint16_t job_id)
+{
+    uint16_t i;
+
+    if (!ctx)
+        return NE_DRV_ERR_NULL;
+    if (!ctx->initialized)
+        return NE_DRV_ERR_INIT;
+    if (job_id == 0)
+        return NE_DRV_ERR_BAD_ID;
+
+    for (i = 0; i < NE_DRV_PRINTER_CAP; i++) {
+        if (ctx->printer.jobs[i].job_id == job_id) {
+            memset(&ctx->printer.jobs[i], 0, sizeof(ctx->printer.jobs[i]));
+            ctx->printer.job_count--;
+            return NE_DRV_OK;
+        }
+    }
+    return NE_DRV_ERR_NOT_FOUND;
+}
+
+int ne_drv_printer_start_page(NEDrvContext *ctx, uint16_t job_id)
+{
+    uint16_t i;
+
+    if (!ctx)
+        return NE_DRV_ERR_NULL;
+    if (!ctx->initialized)
+        return NE_DRV_ERR_INIT;
+    if (job_id == 0)
+        return NE_DRV_ERR_BAD_ID;
+
+    for (i = 0; i < NE_DRV_PRINTER_CAP; i++) {
+        if (ctx->printer.jobs[i].job_id == job_id) {
+            ctx->printer.jobs[i].in_page = 1;
+            ctx->printer.jobs[i].page_count++;
+            return NE_DRV_OK;
+        }
+    }
+    return NE_DRV_ERR_NOT_FOUND;
+}
+
+int ne_drv_printer_end_page(NEDrvContext *ctx, uint16_t job_id)
+{
+    uint16_t i;
+
+    if (!ctx)
+        return NE_DRV_ERR_NULL;
+    if (!ctx->initialized)
+        return NE_DRV_ERR_INIT;
+    if (job_id == 0)
+        return NE_DRV_ERR_BAD_ID;
+
+    for (i = 0; i < NE_DRV_PRINTER_CAP; i++) {
+        if (ctx->printer.jobs[i].job_id == job_id) {
+            ctx->printer.jobs[i].in_page = 0;
+            return NE_DRV_OK;
+        }
+    }
+    return NE_DRV_ERR_NOT_FOUND;
+}
+
+int ne_drv_printer_abort_doc(NEDrvContext *ctx, uint16_t job_id)
+{
+    return ne_drv_printer_end_doc(ctx, job_id);
+}
+
+uint16_t ne_drv_printer_get_job_count(const NEDrvContext *ctx)
+{
+    if (!ctx || !ctx->initialized)
+        return 0;
+    return ctx->printer.job_count;
 }
 
 /* =========================================================================
