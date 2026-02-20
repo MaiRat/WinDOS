@@ -279,6 +279,66 @@ int ne_lmem_unlock(NELMemHeap *heap, NELMemHandle handle);
 uint16_t ne_lmem_size(const NELMemHeap *heap, NELMemHandle handle);
 
 /*
+ * ne_gmem_flags - return the flags word for a global memory block.
+ *
+ * Returns the NE_GMEM_* flags that were supplied at allocation time,
+ * or 0 if the handle is not found.
+ */
+uint16_t ne_gmem_flags(const NEGMemTable *tbl, NEGMemHandle handle);
+
+/*
+ * ne_gmem_handle - look up a global memory handle by data pointer.
+ *
+ * Scans the table for a block whose data pointer equals 'ptr'.
+ * Returns the handle on success or NE_GMEM_HANDLE_INVALID if not found.
+ */
+NEGMemHandle ne_gmem_handle(const NEGMemTable *tbl, const void *ptr);
+
+/*
+ * ne_gmem_compact - compact global memory (stub).
+ *
+ * In a real implementation this would coalesce free blocks and return
+ * the size of the largest contiguous free block.  This stub returns 0.
+ */
+uint32_t ne_gmem_compact(NEGMemTable *tbl);
+
+/*
+ * ne_lmem_realloc - change the size of a local memory block.
+ *
+ * Allocates a new buffer of 'new_size' bytes, copies the existing data
+ * (up to the smaller of old and new sizes), frees the old buffer, and
+ * updates the block descriptor.  'flags' is reserved for future use.
+ *
+ * Returns the handle on success or NE_LMEM_HANDLE_INVALID on failure.
+ */
+NELMemHandle ne_lmem_realloc(NELMemHeap *heap, NELMemHandle handle,
+                              uint16_t new_size, uint16_t flags);
+
+/*
+ * ne_lmem_flags - return the flags word for a local memory block.
+ *
+ * Returns the NE_LMEM_* flags that were supplied at allocation time,
+ * or 0 if the handle is not found.
+ */
+uint16_t ne_lmem_flags(const NELMemHeap *heap, NELMemHandle handle);
+
+/*
+ * ne_lmem_handle - look up a local memory handle by data pointer.
+ *
+ * Scans the heap for a block whose data pointer equals 'ptr'.
+ * Returns the handle on success or NE_LMEM_HANDLE_INVALID if not found.
+ */
+NELMemHandle ne_lmem_handle(const NELMemHeap *heap, const void *ptr);
+
+/*
+ * ne_lmem_compact - compact local memory (stub).
+ *
+ * In a real implementation this would coalesce free blocks and return
+ * the size of the largest contiguous free block.  This stub returns 0.
+ */
+uint16_t ne_lmem_compact(NELMemHeap *heap);
+
+/*
  * ne_mem_strerror - return a static string describing error code 'err'.
  */
 const char *ne_mem_strerror(int err);

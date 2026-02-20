@@ -1959,6 +1959,313 @@ static void test_ini_null_ctx(void)
     TEST_PASS();
 }
 
+/* =========================================================================
+ * Phase C: Extended Memory API tests
+ * ===================================================================== */
+
+static void test_global_size(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    NEGMemHandle    h;
+
+    TEST_BEGIN("GlobalSize: returns correct size");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    h = ne_kernel_global_alloc(&ctx, NE_GMEM_FIXED, 256);
+    ASSERT_NE(h, NE_GMEM_HANDLE_INVALID);
+    ASSERT_EQ(ne_kernel_global_size(&ctx, h), (uint32_t)256u);
+
+    ne_kernel_global_free(&ctx, h);
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_global_flags(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    NEGMemHandle    h;
+
+    TEST_BEGIN("GlobalFlags: returns correct flags");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    h = ne_kernel_global_alloc(&ctx, NE_GMEM_MOVEABLE | NE_GMEM_ZEROINIT, 64);
+    ASSERT_NE(h, NE_GMEM_HANDLE_INVALID);
+    ASSERT_EQ(ne_kernel_global_flags(&ctx, h),
+              (uint16_t)(NE_GMEM_MOVEABLE | NE_GMEM_ZEROINIT));
+
+    ne_kernel_global_free(&ctx, h);
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_global_handle(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    NEGMemHandle    h;
+    void           *ptr;
+
+    TEST_BEGIN("GlobalHandle: returns handle from pointer");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    h = ne_kernel_global_alloc(&ctx, NE_GMEM_FIXED, 32);
+    ASSERT_NE(h, NE_GMEM_HANDLE_INVALID);
+
+    ptr = ne_kernel_global_lock(&ctx, h);
+    ASSERT_NOT_NULL(ptr);
+    ASSERT_EQ(ne_kernel_global_handle(&ctx, ptr), h);
+
+    ne_kernel_global_unlock(&ctx, h);
+    ne_kernel_global_free(&ctx, h);
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_local_size(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    NELMemHandle    h;
+
+    TEST_BEGIN("LocalSize: returns correct size");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    h = ne_kernel_local_alloc(&ctx, NE_LMEM_FIXED, 128);
+    ASSERT_NE(h, NE_LMEM_HANDLE_INVALID);
+    ASSERT_EQ(ne_kernel_local_size(&ctx, h), (uint16_t)128u);
+
+    ne_kernel_local_free(&ctx, h);
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_local_realloc(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    NELMemHandle    h;
+
+    TEST_BEGIN("LocalReAlloc: resize block");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    h = ne_kernel_local_alloc(&ctx, NE_LMEM_FIXED, 64);
+    ASSERT_NE(h, NE_LMEM_HANDLE_INVALID);
+    ASSERT_EQ(ne_kernel_local_size(&ctx, h), (uint16_t)64u);
+
+    h = ne_kernel_local_realloc(&ctx, h, 256, 0);
+    ASSERT_NE(h, NE_LMEM_HANDLE_INVALID);
+    ASSERT_EQ(ne_kernel_local_size(&ctx, h), (uint16_t)256u);
+
+    ne_kernel_local_free(&ctx, h);
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_local_flags(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    NELMemHandle    h;
+
+    TEST_BEGIN("LocalFlags: returns correct flags");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    h = ne_kernel_local_alloc(&ctx, NE_LMEM_MOVEABLE | NE_LMEM_ZEROINIT, 32);
+    ASSERT_NE(h, NE_LMEM_HANDLE_INVALID);
+    ASSERT_EQ(ne_kernel_local_flags(&ctx, h),
+              (uint16_t)(NE_LMEM_MOVEABLE | NE_LMEM_ZEROINIT));
+
+    ne_kernel_local_free(&ctx, h);
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_local_handle(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    NELMemHandle    h;
+    void           *ptr;
+
+    TEST_BEGIN("LocalHandle: returns handle from pointer");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    h = ne_kernel_local_alloc(&ctx, NE_LMEM_FIXED, 16);
+    ASSERT_NE(h, NE_LMEM_HANDLE_INVALID);
+
+    ptr = ne_kernel_local_lock(&ctx, h);
+    ASSERT_NOT_NULL(ptr);
+    ASSERT_EQ(ne_kernel_local_handle(&ctx, ptr), h);
+
+    ne_kernel_local_unlock(&ctx, h);
+    ne_kernel_local_free(&ctx, h);
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_global_compact(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+
+    TEST_BEGIN("GlobalCompact: returns >= 0");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    /* Stub returns 0, which is >= 0 */
+    ASSERT_EQ(ne_kernel_global_compact(&ctx, 0), (uint32_t)0u);
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_local_compact(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+
+    TEST_BEGIN("LocalCompact: returns >= 0");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    ASSERT_EQ(ne_kernel_local_compact(&ctx, 0), (uint16_t)0u);
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_get_free_space(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+
+    TEST_BEGIN("GetFreeSpace: returns > 0");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    ASSERT_NE(ne_kernel_get_free_space(&ctx, 0), (uint32_t)0u);
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_get_free_system_resources(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    uint16_t        pct;
+
+    TEST_BEGIN("GetFreeSystemResources: returns > 0 and <= 100");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    pct = ne_kernel_get_free_system_resources(&ctx, 0);
+    ASSERT_NE(pct, (uint16_t)0u);
+    if (pct > 100) { TEST_FAIL("percentage > 100"); }
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_lock_segment(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+
+    TEST_BEGIN("LockSegment: returns same segment value");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    ASSERT_EQ(ne_kernel_lock_segment(&ctx, 42), 42);
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_unlock_segment(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+
+    TEST_BEGIN("UnlockSegment: returns 0");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    ASSERT_EQ(ne_kernel_unlock_segment(&ctx, 42), 0);
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_phase_c_null_ctx(void)
+{
+    TEST_BEGIN("Phase C APIs: NULL ctx return errors/zeros");
+
+    ASSERT_EQ(ne_kernel_global_size(NULL, 1), (uint32_t)0u);
+    ASSERT_EQ(ne_kernel_global_flags(NULL, 1), (uint16_t)0u);
+    ASSERT_EQ(ne_kernel_global_handle(NULL, NULL), NE_GMEM_HANDLE_INVALID);
+    ASSERT_EQ(ne_kernel_local_size(NULL, 1), (uint16_t)0u);
+    ASSERT_EQ(ne_kernel_local_realloc(NULL, 1, 64, 0), NE_LMEM_HANDLE_INVALID);
+    ASSERT_EQ(ne_kernel_local_flags(NULL, 1), (uint16_t)0u);
+    ASSERT_EQ(ne_kernel_local_handle(NULL, NULL), NE_LMEM_HANDLE_INVALID);
+    ASSERT_EQ(ne_kernel_global_compact(NULL, 0), (uint32_t)0u);
+    ASSERT_EQ(ne_kernel_local_compact(NULL, 0), (uint16_t)0u);
+    ASSERT_EQ(ne_kernel_get_free_space(NULL, 0), (uint32_t)0u);
+    ASSERT_EQ(ne_kernel_get_free_system_resources(NULL, 0), (uint16_t)0u);
+    ASSERT_EQ(ne_kernel_lock_segment(NULL, 1), 0);
+    ASSERT_EQ(ne_kernel_unlock_segment(NULL, 1), 0);
+
+    TEST_PASS();
+}
+
 int main(void)
 {
     printf("=== WinDOS KERNEL.EXE API Stub Tests (Phase 2) ===\n\n");
@@ -2075,6 +2382,23 @@ int main(void)
     test_write_profile_string();
     test_ini_case_insensitive();
     test_ini_null_ctx();
+
+    /* --- Phase C APIs --- */
+    printf("\n--- Phase C APIs ---\n");
+    test_global_size();
+    test_global_flags();
+    test_global_handle();
+    test_local_size();
+    test_local_realloc();
+    test_local_flags();
+    test_local_handle();
+    test_global_compact();
+    test_local_compact();
+    test_get_free_space();
+    test_get_free_system_resources();
+    test_lock_segment();
+    test_unlock_segment();
+    test_phase_c_null_ctx();
 
     printf("\n=== Results: %d/%d passed",
            g_tests_passed, g_tests_run);

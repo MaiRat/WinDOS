@@ -111,6 +111,21 @@ static const NEKernelExportInfo g_catalog[] = {
     { NE_KERNEL_ORD_GET_PRIVATE_PROFILE_INT,    "GetPrivateProfileInt",     NE_KERNEL_CLASS_CRITICAL  },
     { NE_KERNEL_ORD_GET_PRIVATE_PROFILE_STRING, "GetPrivateProfileString",  NE_KERNEL_CLASS_CRITICAL  },
     { NE_KERNEL_ORD_WRITE_PRIVATE_PROFILE_STRING, "WritePrivateProfileString", NE_KERNEL_CLASS_CRITICAL },
+
+    /* Phase C – extended memory APIs */
+    { NE_KERNEL_ORD_GLOBAL_SIZE,                "GlobalSize",              NE_KERNEL_CLASS_SECONDARY },
+    { NE_KERNEL_ORD_GLOBAL_FLAGS,               "GlobalFlags",             NE_KERNEL_CLASS_SECONDARY },
+    { NE_KERNEL_ORD_GLOBAL_HANDLE,              "GlobalHandle",            NE_KERNEL_CLASS_SECONDARY },
+    { NE_KERNEL_ORD_LOCAL_SIZE,                 "LocalSize",               NE_KERNEL_CLASS_SECONDARY },
+    { NE_KERNEL_ORD_LOCAL_REALLOC,              "LocalReAlloc",            NE_KERNEL_CLASS_SECONDARY },
+    { NE_KERNEL_ORD_LOCAL_FLAGS,                "LocalFlags",              NE_KERNEL_CLASS_SECONDARY },
+    { NE_KERNEL_ORD_LOCAL_HANDLE,               "LocalHandle",             NE_KERNEL_CLASS_SECONDARY },
+    { NE_KERNEL_ORD_GLOBAL_COMPACT,             "GlobalCompact",           NE_KERNEL_CLASS_SECONDARY },
+    { NE_KERNEL_ORD_LOCAL_COMPACT,              "LocalCompact",            NE_KERNEL_CLASS_SECONDARY },
+    { NE_KERNEL_ORD_GET_FREE_SPACE,             "GetFreeSpace",            NE_KERNEL_CLASS_SECONDARY },
+    { NE_KERNEL_ORD_GET_FREE_SYSTEM_RESOURCES,  "GetFreeSystemResources",  NE_KERNEL_CLASS_OPTIONAL  },
+    { NE_KERNEL_ORD_LOCK_SEGMENT,               "LockSegment",             NE_KERNEL_CLASS_SECONDARY },
+    { NE_KERNEL_ORD_UNLOCK_SEGMENT,             "UnlockSegment",           NE_KERNEL_CLASS_SECONDARY },
 };
 
 #define CATALOG_COUNT \
@@ -1331,4 +1346,109 @@ int ne_kernel_write_profile_string(NEKernelContext *ctx,
 {
     return ne_kernel_write_private_profile_string(
         ctx, section, key, value, ini_get_win_ini_path());
+}
+
+/* =========================================================================
+ * Phase C: Extended Memory APIs
+ * ===================================================================== */
+
+uint32_t ne_kernel_global_size(NEKernelContext *ctx, NEGMemHandle handle)
+{
+    if (!ctx || !ctx->initialized)
+        return 0;
+    return ne_gmem_size(ctx->gmem, handle);
+}
+
+uint16_t ne_kernel_global_flags(NEKernelContext *ctx, NEGMemHandle handle)
+{
+    if (!ctx || !ctx->initialized)
+        return 0;
+    return ne_gmem_flags(ctx->gmem, handle);
+}
+
+NEGMemHandle ne_kernel_global_handle(NEKernelContext *ctx, const void *ptr)
+{
+    if (!ctx || !ctx->initialized)
+        return NE_GMEM_HANDLE_INVALID;
+    return ne_gmem_handle(ctx->gmem, ptr);
+}
+
+uint16_t ne_kernel_local_size(NEKernelContext *ctx, NELMemHandle handle)
+{
+    if (!ctx || !ctx->initialized)
+        return 0;
+    return ne_lmem_size(ctx->lmem, handle);
+}
+
+NELMemHandle ne_kernel_local_realloc(NEKernelContext *ctx,
+                                      NELMemHandle handle,
+                                      uint16_t new_size, uint16_t flags)
+{
+    if (!ctx || !ctx->initialized)
+        return NE_LMEM_HANDLE_INVALID;
+    return ne_lmem_realloc(ctx->lmem, handle, new_size, flags);
+}
+
+uint16_t ne_kernel_local_flags(NEKernelContext *ctx, NELMemHandle handle)
+{
+    if (!ctx || !ctx->initialized)
+        return 0;
+    return ne_lmem_flags(ctx->lmem, handle);
+}
+
+NELMemHandle ne_kernel_local_handle(NEKernelContext *ctx, const void *ptr)
+{
+    if (!ctx || !ctx->initialized)
+        return NE_LMEM_HANDLE_INVALID;
+    return ne_lmem_handle(ctx->lmem, ptr);
+}
+
+uint32_t ne_kernel_global_compact(NEKernelContext *ctx, uint32_t dwMinFree)
+{
+    (void)dwMinFree;
+    if (!ctx || !ctx->initialized)
+        return 0;
+    return ne_gmem_compact(ctx->gmem);
+}
+
+uint16_t ne_kernel_local_compact(NEKernelContext *ctx, uint16_t wMinFree)
+{
+    (void)wMinFree;
+    if (!ctx || !ctx->initialized)
+        return 0;
+    return ne_lmem_compact(ctx->lmem);
+}
+
+uint32_t ne_kernel_get_free_space(NEKernelContext *ctx, uint16_t flags)
+{
+    (void)flags;
+    if (!ctx || !ctx->initialized)
+        return 0;
+    return 0x100000uL; /* 1 MB simulated free space */
+}
+
+uint16_t ne_kernel_get_free_system_resources(NEKernelContext *ctx,
+                                              uint16_t fuSysResource)
+{
+    (void)fuSysResource;
+    if (!ctx || !ctx->initialized)
+        return 0;
+    return 90; /* 90% free (simulated) */
+}
+
+int ne_kernel_lock_segment(NEKernelContext *ctx, uint16_t wSegment)
+{
+    if (!ctx || !ctx->initialized)
+        return 0;
+    /* No-op in real mode: segments are always locked */
+    return (int)wSegment;
+}
+
+int ne_kernel_unlock_segment(NEKernelContext *ctx, uint16_t wSegment)
+{
+    (void)wSegment;
+    if (!ctx || !ctx->initialized)
+        return 0;
+    /* No-op in real mode */
+    return 0;
 }

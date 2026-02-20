@@ -123,6 +123,21 @@
 #define NE_KERNEL_ORD_WIN_EXEC           166
 #define NE_KERNEL_ORD_IS_TASK            320
 
+/* Phase C – extended memory API ordinals (Windows 3.1) */
+#define NE_KERNEL_ORD_GLOBAL_SIZE           20
+#define NE_KERNEL_ORD_GLOBAL_HANDLE         21
+#define NE_KERNEL_ORD_GLOBAL_FLAGS          22
+#define NE_KERNEL_ORD_LOCAL_REALLOC          6
+#define NE_KERNEL_ORD_LOCAL_SIZE            10
+#define NE_KERNEL_ORD_LOCAL_HANDLE          11
+#define NE_KERNEL_ORD_LOCAL_FLAGS           12
+#define NE_KERNEL_ORD_LOCAL_COMPACT         13
+#define NE_KERNEL_ORD_LOCK_SEGMENT          23
+#define NE_KERNEL_ORD_UNLOCK_SEGMENT        24
+#define NE_KERNEL_ORD_GLOBAL_COMPACT        25
+#define NE_KERNEL_ORD_GET_FREE_SPACE       169
+#define NE_KERNEL_ORD_GET_FREE_SYSTEM_RESOURCES 284
+
 /* Phase B – INI file / profile API ordinals (Windows 3.1) */
 #define NE_KERNEL_ORD_GET_PROFILE_INT           57
 #define NE_KERNEL_ORD_GET_PROFILE_STRING        58
@@ -817,5 +832,108 @@ int ne_kernel_write_private_profile_string(NEKernelContext *ctx,
                                             const char *key,
                                             const char *value,
                                             const char *filename);
+
+/* =========================================================================
+ * Public API – Phase C: Extended Memory APIs
+ * ===================================================================== */
+
+/*
+ * ne_kernel_global_size - return the byte count for a global memory block.
+ *
+ * Delegates to ne_gmem_size().  Returns 0 on failure.
+ */
+uint32_t ne_kernel_global_size(NEKernelContext *ctx, NEGMemHandle handle);
+
+/*
+ * ne_kernel_global_flags - return the flags for a global memory block.
+ *
+ * Delegates to ne_gmem_flags().  Returns 0 on failure.
+ */
+uint16_t ne_kernel_global_flags(NEKernelContext *ctx, NEGMemHandle handle);
+
+/*
+ * ne_kernel_global_handle - look up a global handle by data pointer.
+ *
+ * Delegates to ne_gmem_handle().  Returns NE_GMEM_HANDLE_INVALID on failure.
+ */
+NEGMemHandle ne_kernel_global_handle(NEKernelContext *ctx, const void *ptr);
+
+/*
+ * ne_kernel_local_size - return the byte count for a local memory block.
+ *
+ * Delegates to ne_lmem_size().  Returns 0 on failure.
+ */
+uint16_t ne_kernel_local_size(NEKernelContext *ctx, NELMemHandle handle);
+
+/*
+ * ne_kernel_local_realloc - change the size of a local memory block.
+ *
+ * Delegates to ne_lmem_realloc().  Returns NE_LMEM_HANDLE_INVALID on
+ * failure.
+ */
+NELMemHandle ne_kernel_local_realloc(NEKernelContext *ctx,
+                                      NELMemHandle handle,
+                                      uint16_t new_size, uint16_t flags);
+
+/*
+ * ne_kernel_local_flags - return the flags for a local memory block.
+ *
+ * Delegates to ne_lmem_flags().  Returns 0 on failure.
+ */
+uint16_t ne_kernel_local_flags(NEKernelContext *ctx, NELMemHandle handle);
+
+/*
+ * ne_kernel_local_handle - look up a local handle by data pointer.
+ *
+ * Delegates to ne_lmem_handle().  Returns NE_LMEM_HANDLE_INVALID on
+ * failure.
+ */
+NELMemHandle ne_kernel_local_handle(NEKernelContext *ctx, const void *ptr);
+
+/*
+ * ne_kernel_global_compact - compact global memory.
+ *
+ * 'dwMinFree' is ignored (stub).  Delegates to ne_gmem_compact().
+ * Returns the size of the largest free block (currently 0).
+ */
+uint32_t ne_kernel_global_compact(NEKernelContext *ctx, uint32_t dwMinFree);
+
+/*
+ * ne_kernel_local_compact - compact local memory.
+ *
+ * 'wMinFree' is ignored (stub).  Delegates to ne_lmem_compact().
+ * Returns the size of the largest free block (currently 0).
+ */
+uint16_t ne_kernel_local_compact(NEKernelContext *ctx, uint16_t wMinFree);
+
+/*
+ * ne_kernel_get_free_space - return the amount of free memory.
+ *
+ * 'flags' is ignored.  Stub: returns 0x100000 (1 MB available).
+ */
+uint32_t ne_kernel_get_free_space(NEKernelContext *ctx, uint16_t flags);
+
+/*
+ * ne_kernel_get_free_system_resources - return percentage of free resources.
+ *
+ * 'fuSysResource' is ignored.  Stub: returns 90 (90% free).
+ */
+uint16_t ne_kernel_get_free_system_resources(NEKernelContext *ctx,
+                                              uint16_t fuSysResource);
+
+/*
+ * ne_kernel_lock_segment - lock a memory segment.
+ *
+ * No-op in real mode (segments are always locked).
+ * Returns the segment value on success, 0 on failure.
+ */
+int ne_kernel_lock_segment(NEKernelContext *ctx, uint16_t wSegment);
+
+/*
+ * ne_kernel_unlock_segment - unlock a memory segment.
+ *
+ * No-op in real mode.  Returns 0.
+ */
+int ne_kernel_unlock_segment(NEKernelContext *ctx, uint16_t wSegment);
 
 #endif /* NE_KERNEL_H */
