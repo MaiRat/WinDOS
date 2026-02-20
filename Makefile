@@ -17,12 +17,18 @@ BUILD_DIR := build
 PARSER_SRC  := $(SRC_DIR)/ne_parser.c
 PARSER_OBJ  := $(BUILD_DIR)/ne_parser.o
 
-TEST_SRC    := $(TEST_DIR)/test_ne_parser.c
-TEST_BIN    := $(BUILD_DIR)/test_ne_parser
+LOADER_SRC  := $(SRC_DIR)/ne_loader.c
+LOADER_OBJ  := $(BUILD_DIR)/ne_loader.o
+
+TEST_SRC         := $(TEST_DIR)/test_ne_parser.c
+TEST_BIN         := $(BUILD_DIR)/test_ne_parser
+
+LOADER_TEST_SRC  := $(TEST_DIR)/test_ne_loader.c
+LOADER_TEST_BIN  := $(BUILD_DIR)/test_ne_loader
 
 .PHONY: all test clean
 
-all: $(TEST_BIN)
+all: $(TEST_BIN) $(LOADER_TEST_BIN)
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
@@ -30,12 +36,20 @@ $(BUILD_DIR):
 $(PARSER_OBJ): $(PARSER_SRC) $(SRC_DIR)/ne_parser.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
+$(LOADER_OBJ): $(LOADER_SRC) $(SRC_DIR)/ne_loader.h $(SRC_DIR)/ne_parser.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c -o $@ $<
+
 $(TEST_BIN): $(TEST_SRC) $(PARSER_OBJ) | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -o $@ $^
 
-test: $(TEST_BIN)
+$(LOADER_TEST_BIN): $(LOADER_TEST_SRC) $(PARSER_OBJ) $(LOADER_OBJ) | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -o $@ $^
+
+test: $(TEST_BIN) $(LOADER_TEST_BIN)
 	@echo "--- Running NE parser tests ---"
 	$(TEST_BIN)
+	@echo "--- Running NE loader tests ---"
+	$(LOADER_TEST_BIN)
 
 clean:
 	rm -rf $(BUILD_DIR)
