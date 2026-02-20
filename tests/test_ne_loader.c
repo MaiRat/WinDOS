@@ -7,8 +7,9 @@
  * segment layout.
  *
  * Build with:
- *   gcc -std=c99 -Wall -Wextra -I../src ../src/ne_parser.c \
- *       ../src/ne_loader.c test_ne_loader.c -o test_ne_loader
+ *   wcc -ml -za99 -wx -d2 -i=../src ../src/ne_parser.c ../src/ne_loader.c
+ *       test_ne_loader.c
+ *   wlink system dos name test_ne_loader.exe file test_ne_loader.obj,ne_parser.obj,ne_loader.obj
  */
 
 #include "../src/ne_parser.h"
@@ -52,8 +53,8 @@ static int g_tests_failed = 0;
     do { \
         if ((a) != (b)) { \
             g_tests_failed++; \
-            printf("FAIL \xe2\x80\x93 expected %lld got %lld (line %d)\n", \
-                   (long long)(b), (long long)(a), __LINE__); \
+            printf("FAIL \xe2\x80\x93 expected %ld got %ld (line %d)\n", \
+                   (long)(b), (long)(a), __LINE__); \
             return; \
         } \
     } while (0)
@@ -62,8 +63,8 @@ static int g_tests_failed = 0;
     do { \
         if ((a) == (b)) { \
             g_tests_failed++; \
-            printf("FAIL \xe2\x80\x93 unexpected equal value %lld (line %d)\n", \
-                   (long long)(a), __LINE__); \
+            printf("FAIL \xe2\x80\x93 unexpected equal value %ld (line %d)\n", \
+                   (long)(a), __LINE__); \
             return; \
         } \
     } while (0)
@@ -311,10 +312,10 @@ static void test_null_args(void)
     ret = ne_load_file(NULL, &parser, &loader);
     ASSERT_EQ(ret, NE_LOAD_ERR_NULL);
 
-    ret = ne_load_file("/tmp/x", NULL, &loader);
+    ret = ne_load_file("x", NULL, &loader);
     ASSERT_EQ(ret, NE_LOAD_ERR_NULL);
 
-    ret = ne_load_file("/tmp/x", &parser, NULL);
+    ret = ne_load_file("x", &parser, NULL);
     ASSERT_EQ(ret, NE_LOAD_ERR_NULL);
 
     TEST_PASS();
@@ -639,7 +640,7 @@ static void test_load_file_roundtrip(void)
 {
     NEParserContext  parser;
     NELoaderContext  loader;
-    const char *path = "/tmp/test_ne_loader_roundtrip.exe";
+    const char *path = "NELDTEST.EXE";
     size_t   len;
     const uint8_t fill1 = 0xBE, fill2 = 0xEF;
 
@@ -689,7 +690,7 @@ static void test_load_file_not_found(void)
     int ret = ne_parse_buffer(buf, len, &parser);
     ASSERT_EQ(ret, NE_OK);
 
-    ret = ne_load_file("/tmp/__no_such_file_windos_loader__.exe", &parser, &loader);
+    ret = ne_load_file("NXFILE2.EXE", &parser, &loader);
     ASSERT_EQ(ret, NE_LOAD_ERR_IO);
 
     ne_free(&parser);
@@ -738,7 +739,7 @@ static void test_print_info(void)
     ret = ne_load_buffer(buf, len, &parser, &loader);
     ASSERT_EQ(ret, NE_LOAD_OK);
 
-    FILE *devnull = fopen("/dev/null", "w");
+    FILE *devnull = fopen("NUL", "w");
     if (devnull) {
         ne_loader_print_info(&loader, &parser, devnull);
         fclose(devnull);

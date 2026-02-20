@@ -85,7 +85,7 @@ int ne_load_buffer(const uint8_t *buf, size_t len,
 
         /* Copy file-backed segment data when the segment has file content */
         if (sd->offset != 0) {
-            if ((uint64_t)file_off + data_sz > (uint64_t)len) {
+            if ((uint32_t)file_off + data_sz > (uint32_t)len) {
                 ne_loader_free(loader);
                 return NE_LOAD_ERR_IO;
             }

@@ -111,7 +111,7 @@ static uint8_t *dup_region(const uint8_t *buf, size_t buf_len,
     uint8_t *p;
     if (size == 0)
         return NULL;
-    if ((uint64_t)offset + size > buf_len)
+    if ((uint32_t)offset + size > buf_len)
         return NULL;
     p = (uint8_t *)malloc(size);
     if (p)
@@ -158,7 +158,7 @@ int ne_parse_buffer(const uint8_t *buf, size_t len, NEParserContext *ctx)
     ne_off = mz.ne_offset;
 
     /* ---- Validate NE header offset ---- */
-    if (ne_off < MZ_HEADER_MIN_SIZE || (uint64_t)ne_off + NE_HEADER_SIZE > len)
+    if (ne_off < MZ_HEADER_MIN_SIZE || (uint32_t)ne_off + NE_HEADER_SIZE > len)
         return NE_ERR_BAD_OFFSET;
 
     /* ---- NE header ---- */
@@ -172,8 +172,8 @@ int ne_parse_buffer(const uint8_t *buf, size_t len, NEParserContext *ctx)
     /* ---- Validate segment table ---- */
     seg_table_abs = ne_off + ctx->header.segment_table_offset;
     if (ctx->header.segment_count > 0) {
-        uint64_t seg_table_end = (uint64_t)seg_table_abs
-                               + (uint64_t)ctx->header.segment_count * NE_SEG_DESC_SIZE;
+        uint32_t seg_table_end = (uint32_t)seg_table_abs
+                               + (uint32_t)ctx->header.segment_count * NE_SEG_DESC_SIZE;
         if (seg_table_end > len)
             return NE_ERR_BAD_OFFSET;
     }
@@ -208,7 +208,7 @@ int ne_parse_buffer(const uint8_t *buf, size_t len, NEParserContext *ctx)
                                   - ctx->header.resource_table_offset);
         ctx->resource_size = res_size;
         if (res_size > 0) {
-            if ((uint64_t)res_table_abs + res_size > len) {
+            if ((uint32_t)res_table_abs + res_size > len) {
                 ne_free(ctx);
                 return NE_ERR_BAD_OFFSET;
             }
@@ -223,7 +223,7 @@ int ne_parse_buffer(const uint8_t *buf, size_t len, NEParserContext *ctx)
     /* ---- Entry table ---- */
     entry_table_abs = ne_off + ctx->header.entry_table_offset;
     if (ctx->header.entry_table_length > 0) {
-        if ((uint64_t)entry_table_abs + ctx->header.entry_table_length > len) {
+        if ((uint32_t)entry_table_abs + ctx->header.entry_table_length > len) {
             ne_free(ctx);
             return NE_ERR_BAD_OFFSET;
         }
@@ -243,7 +243,7 @@ int ne_parse_buffer(const uint8_t *buf, size_t len, NEParserContext *ctx)
             && ctx->header.module_ref_table_offset > ctx->header.imported_names_offset) {
         uint16_t imp_size = (uint16_t)(ctx->header.module_ref_table_offset
                                        - ctx->header.imported_names_offset);
-        if (imp_size > 0 && (uint64_t)imp_names_abs + imp_size <= len) {
+        if (imp_size > 0 && (uint32_t)imp_names_abs + imp_size <= len) {
             ctx->imported_names_size = imp_size;
             ctx->imported_names = dup_region(buf, len, imp_names_abs, imp_size);
             if (!ctx->imported_names) {

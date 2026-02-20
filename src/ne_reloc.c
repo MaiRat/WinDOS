@@ -77,7 +77,7 @@ int ne_reloc_parse(const uint8_t        *buf,
         reloc_off = file_off + data_size;
 
         /* Need at least 2 bytes for the record count field */
-        if ((uint64_t)reloc_off + 2u > (uint64_t)len) {
+        if ((uint32_t)reloc_off + 2u > (uint32_t)len) {
             ne_reloc_free(ctx);
             return NE_RELOC_ERR_IO;
         }
@@ -87,7 +87,7 @@ int ne_reloc_parse(const uint8_t        *buf,
             continue;
 
         /* Validate that all record bytes are within the buffer */
-        if ((uint64_t)reloc_off + 2u + (uint64_t)count * 8u > (uint64_t)len) {
+        if ((uint32_t)reloc_off + 2u + (uint32_t)count * 8u > (uint32_t)len) {
             ne_reloc_free(ctx);
             return NE_RELOC_ERR_IO;
         }

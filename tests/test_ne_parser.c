@@ -5,8 +5,8 @@
  * image in memory (or on disk) and verifies the parser's behaviour.
  *
  * Build with:
- *   gcc -std=c99 -Wall -Wextra -I../src ../src/ne_parser.c \
- *       test_ne_parser.c -o test_ne_parser
+ *   wcc -ml -za99 -wx -d2 -i=../src ../src/ne_parser.c test_ne_parser.c
+ *   wlink system dos name test_ne_parser.exe file test_ne_parser.obj,ne_parser.obj
  */
 
 #include "../src/ne_parser.h"
@@ -49,8 +49,8 @@ static int g_tests_failed = 0;
     do { \
         if ((a) != (b)) { \
             g_tests_failed++; \
-            printf("FAIL – expected %lld got %lld (line %d)\n", \
-                   (long long)(b), (long long)(a), __LINE__); \
+            printf("FAIL – expected %ld got %ld (line %d)\n", \
+                   (long)(b), (long)(a), __LINE__); \
             return; \
         } \
     } while (0)
@@ -59,8 +59,8 @@ static int g_tests_failed = 0;
     do { \
         if ((a) == (b)) { \
             g_tests_failed++; \
-            printf("FAIL – unexpected equal value %lld (line %d)\n", \
-                   (long long)(a), __LINE__); \
+            printf("FAIL – unexpected equal value %ld (line %d)\n", \
+                   (long)(a), __LINE__); \
             return; \
         } \
     } while (0)
@@ -464,7 +464,7 @@ static void test_file_roundtrip(void)
 {
     NEParserContext ctx;
     size_t  len;
-    const char *path = "/tmp/test_ne_roundtrip.exe";
+    const char *path = "NETEST.EXE";
 
     uint8_t *buf = build_ne_image(3, 6, &len);
     ASSERT_NOT_NULL(buf);
@@ -492,7 +492,7 @@ static void test_file_not_found(void)
 {
     NEParserContext ctx;
     TEST_BEGIN("ne_parse_file on non-existent path -> NE_ERR_IO");
-    int ret = ne_parse_file("/tmp/__no_such_file_windos_test__.exe", &ctx);
+    int ret = ne_parse_file("NXFILE1.EXE", &ctx);
     ASSERT_EQ(ret, NE_ERR_IO);
     TEST_PASS();
 }
@@ -510,7 +510,7 @@ static void test_print_info(void)
     ASSERT_EQ(ret, NE_OK);
 
     /* Redirect to /dev/null to avoid cluttering test output */
-    FILE *devnull = fopen("/dev/null", "w");
+    FILE *devnull = fopen("NUL", "w");
     if (devnull) {
         ne_print_info(&ctx, devnull);
         fclose(devnull);

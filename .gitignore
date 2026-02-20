@@ -1,5 +1,10 @@
 # Build artefacts
 build/
 *.o
+*.obj
 *.a
 *.exe
+# DOS null-device stub (created by tests on non-DOS hosts)
+NUL
+NETEST.EXE
+NELDTEST.EXE
