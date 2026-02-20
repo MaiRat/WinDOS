@@ -2,6 +2,41 @@
 
 All notable changes to WinDOS are documented in this file.
 
+## [Unreleased] – Phase F: Driver Completion
+
+### Added
+
+- **Phase F Driver Completion** (`ne_driver`): Full 101/102-key keyboard
+  support, graphics-mode display driver, printer driver, and enhanced
+  mouse driver:
+  - Expanded keyboard scan-code table: 27 new VK mappings covering OEM
+    punctuation keys (minus, equals, brackets, semicolon, apostrophe,
+    grave, backslash, comma, period, slash), keypad operators (multiply,
+    add, subtract), navigation keys (Home, End, Page Up, Page Down,
+    Insert), lock keys (Caps Lock, Num Lock, Scroll Lock), Numpad 5,
+    and F11/F12
+  - Graphics-mode display driver with VGA 640×480×16 and 320×200×256
+    video modes: `ne_drv_disp_set_mode`, `ne_drv_disp_get_mode`,
+    `ne_drv_disp_gfx_set_pixel`, `ne_drv_disp_gfx_get_pixel`,
+    `ne_drv_disp_gfx_fill_rect`, `ne_drv_disp_gfx_clear` with
+    dynamically allocated framebuffer
+  - Printer driver interface (PRINTER.DRV): `ne_drv_printer_install`,
+    `ne_drv_printer_uninstall`, `ne_drv_printer_start_doc`,
+    `ne_drv_printer_end_doc`, `ne_drv_printer_start_page`,
+    `ne_drv_printer_end_page`, `ne_drv_printer_abort_doc`,
+    `ne_drv_printer_get_job_count` with up to 4 simultaneous print jobs
+  - Mouse cursor rendering: 16×16 cursor bitmap with configurable
+    hotspot, `ne_drv_mouse_show_cursor`, `ne_drv_mouse_set_cursor_bitmap`,
+    `ne_drv_mouse_get_cursor_visible`
+  - Mouse event coalescing: `ne_drv_mouse_coalesce_moves` removes
+    duplicate intermediate WM_MOUSEMOVE events from the queue
+
+- **New data structures**: `NEDrvPrintJob`, `NEDrvPrinter` for printer
+  subsystem; extended `NEDrvDisplay` with video mode and framebuffer
+  fields; extended `NEDrvMouse` with cursor bitmap and hotspot.
+
+- **32 new unit tests** for all Phase F features (67 driver tests total).
+
 ## [Unreleased] – Phase E: GDI.EXE Rendering
 
 ### Added

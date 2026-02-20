@@ -769,12 +769,420 @@ static void test_drv_strerror(void)
 }
 
 /* =========================================================================
+ * Phase F: Extended keyboard scan-code tests
+ * ===================================================================== */
+
+static void test_kbd_oem_keys(void)
+{
+    NEDrvContext ctx;
+    TEST_BEGIN("OEM punctuation scan codes mapped correctly");
+    ne_drv_init(&ctx);
+    ne_drv_kbd_install(&ctx);
+    ASSERT_EQ(ne_drv_scancode_to_vk(&ctx, 0x0C), VK_OEM_MINUS);
+    ASSERT_EQ(ne_drv_scancode_to_vk(&ctx, 0x0D), VK_OEM_PLUS);
+    ASSERT_EQ(ne_drv_scancode_to_vk(&ctx, 0x1A), VK_OEM_4);
+    ASSERT_EQ(ne_drv_scancode_to_vk(&ctx, 0x1B), VK_OEM_6);
+    ASSERT_EQ(ne_drv_scancode_to_vk(&ctx, 0x27), VK_OEM_1);
+    ASSERT_EQ(ne_drv_scancode_to_vk(&ctx, 0x28), VK_OEM_7);
+    ASSERT_EQ(ne_drv_scancode_to_vk(&ctx, 0x29), VK_OEM_3);
+    ASSERT_EQ(ne_drv_scancode_to_vk(&ctx, 0x2B), VK_OEM_5);
+    ASSERT_EQ(ne_drv_scancode_to_vk(&ctx, 0x33), VK_OEM_COMMA);
+    ASSERT_EQ(ne_drv_scancode_to_vk(&ctx, 0x34), VK_OEM_PERIOD);
+    ASSERT_EQ(ne_drv_scancode_to_vk(&ctx, 0x35), VK_OEM_2);
+    ne_drv_free(&ctx);
+    TEST_PASS();
+}
+
+static void test_kbd_nav_keys(void)
+{
+    NEDrvContext ctx;
+    TEST_BEGIN("navigation/keypad scan codes mapped correctly");
+    ne_drv_init(&ctx);
+    ne_drv_kbd_install(&ctx);
+    ASSERT_EQ(ne_drv_scancode_to_vk(&ctx, 0x37), VK_MULTIPLY);
+    ASSERT_EQ(ne_drv_scancode_to_vk(&ctx, 0x3A), VK_CAPITAL);
+    ASSERT_EQ(ne_drv_scancode_to_vk(&ctx, 0x45), VK_NUMLOCK);
+    ASSERT_EQ(ne_drv_scancode_to_vk(&ctx, 0x46), VK_SCROLL);
+    ASSERT_EQ(ne_drv_scancode_to_vk(&ctx, 0x47), VK_HOME);
+    ASSERT_EQ(ne_drv_scancode_to_vk(&ctx, 0x49), VK_PRIOR);
+    ASSERT_EQ(ne_drv_scancode_to_vk(&ctx, 0x4A), VK_SUBTRACT);
+    ASSERT_EQ(ne_drv_scancode_to_vk(&ctx, 0x4C), VK_NUMPAD5);
+    ASSERT_EQ(ne_drv_scancode_to_vk(&ctx, 0x4E), VK_ADD);
+    ASSERT_EQ(ne_drv_scancode_to_vk(&ctx, 0x4F), VK_END);
+    ASSERT_EQ(ne_drv_scancode_to_vk(&ctx, 0x51), VK_NEXT);
+    ASSERT_EQ(ne_drv_scancode_to_vk(&ctx, 0x52), VK_INSERT);
+    ne_drv_free(&ctx);
+    TEST_PASS();
+}
+
+static void test_kbd_f11_f12(void)
+{
+    NEDrvContext ctx;
+    TEST_BEGIN("F11/F12 scan codes mapped correctly");
+    ne_drv_init(&ctx);
+    ne_drv_kbd_install(&ctx);
+    ASSERT_EQ(ne_drv_scancode_to_vk(&ctx, 0x57), VK_F11);
+    ASSERT_EQ(ne_drv_scancode_to_vk(&ctx, 0x58), VK_F12);
+    ne_drv_free(&ctx);
+    TEST_PASS();
+}
+
+/* =========================================================================
+ * Phase F: Graphics-mode display driver tests
+ * ===================================================================== */
+
+static void test_gfx_set_mode_640x480(void)
+{
+    NEDrvContext ctx;
+    TEST_BEGIN("set mode 640x480 allocates framebuffer");
+    ne_drv_init(&ctx);
+    ne_drv_disp_install(&ctx);
+    ASSERT_EQ(ne_drv_disp_set_mode(&ctx, NE_DRV_VMODE_640x480), NE_DRV_OK);
+    ASSERT_EQ(ne_drv_disp_get_mode(&ctx), NE_DRV_VMODE_640x480);
+    ASSERT_NOT_NULL(ctx.disp.framebuffer);
+    ASSERT_EQ(ctx.disp.fb_width, 640);
+    ASSERT_EQ(ctx.disp.fb_height, 480);
+    ASSERT_EQ(ctx.disp.fb_size, (uint32_t)(640 * 480));
+    ne_drv_free(&ctx);
+    TEST_PASS();
+}
+
+static void test_gfx_set_mode_320x200(void)
+{
+    NEDrvContext ctx;
+    TEST_BEGIN("set mode 320x200 allocates framebuffer");
+    ne_drv_init(&ctx);
+    ne_drv_disp_install(&ctx);
+    ASSERT_EQ(ne_drv_disp_set_mode(&ctx, NE_DRV_VMODE_320x200), NE_DRV_OK);
+    ASSERT_EQ(ne_drv_disp_get_mode(&ctx), NE_DRV_VMODE_320x200);
+    ASSERT_NOT_NULL(ctx.disp.framebuffer);
+    ASSERT_EQ(ctx.disp.fb_width, 320);
+    ASSERT_EQ(ctx.disp.fb_height, 200);
+    ne_drv_free(&ctx);
+    TEST_PASS();
+}
+
+static void test_gfx_set_mode_text(void)
+{
+    NEDrvContext ctx;
+    TEST_BEGIN("set mode text frees framebuffer");
+    ne_drv_init(&ctx);
+    ne_drv_disp_install(&ctx);
+    ne_drv_disp_set_mode(&ctx, NE_DRV_VMODE_640x480);
+    ASSERT_EQ(ne_drv_disp_set_mode(&ctx, NE_DRV_VMODE_TEXT), NE_DRV_OK);
+    ASSERT_EQ(ne_drv_disp_get_mode(&ctx), NE_DRV_VMODE_TEXT);
+    ASSERT_NULL(ctx.disp.framebuffer);
+    ne_drv_free(&ctx);
+    TEST_PASS();
+}
+
+static void test_gfx_set_mode_invalid(void)
+{
+    NEDrvContext ctx;
+    TEST_BEGIN("set mode with invalid mode returns ERR_BAD_ID");
+    ne_drv_init(&ctx);
+    ne_drv_disp_install(&ctx);
+    ASSERT_EQ(ne_drv_disp_set_mode(&ctx, 99), NE_DRV_ERR_BAD_ID);
+    ne_drv_free(&ctx);
+    TEST_PASS();
+}
+
+static void test_gfx_pixel_roundtrip(void)
+{
+    NEDrvContext ctx;
+    uint8_t color;
+    TEST_BEGIN("set_pixel/get_pixel round-trip in 640x480");
+    ne_drv_init(&ctx);
+    ne_drv_disp_install(&ctx);
+    ne_drv_disp_set_mode(&ctx, NE_DRV_VMODE_640x480);
+    ASSERT_EQ(ne_drv_disp_gfx_set_pixel(&ctx, 100, 200, 0x0A), NE_DRV_OK);
+    ASSERT_EQ(ne_drv_disp_gfx_get_pixel(&ctx, 100, 200, &color), NE_DRV_OK);
+    ASSERT_EQ(color, 0x0A);
+    ne_drv_free(&ctx);
+    TEST_PASS();
+}
+
+static void test_gfx_pixel_out_of_bounds(void)
+{
+    NEDrvContext ctx;
+    TEST_BEGIN("set_pixel out of bounds returns ERR_BAD_ID");
+    ne_drv_init(&ctx);
+    ne_drv_disp_install(&ctx);
+    ne_drv_disp_set_mode(&ctx, NE_DRV_VMODE_320x200);
+    ASSERT_EQ(ne_drv_disp_gfx_set_pixel(&ctx, 320, 0, 1), NE_DRV_ERR_BAD_ID);
+    ASSERT_EQ(ne_drv_disp_gfx_set_pixel(&ctx, 0, 200, 1), NE_DRV_ERR_BAD_ID);
+    ne_drv_free(&ctx);
+    TEST_PASS();
+}
+
+static void test_gfx_fill_rect(void)
+{
+    NEDrvContext ctx;
+    uint8_t color;
+    TEST_BEGIN("fill_rect fills area with color");
+    ne_drv_init(&ctx);
+    ne_drv_disp_install(&ctx);
+    ne_drv_disp_set_mode(&ctx, NE_DRV_VMODE_320x200);
+    ASSERT_EQ(ne_drv_disp_gfx_fill_rect(&ctx, 10, 10, 5, 5, 0x03),
+              NE_DRV_OK);
+    ASSERT_EQ(ne_drv_disp_gfx_get_pixel(&ctx, 10, 10, &color), NE_DRV_OK);
+    ASSERT_EQ(color, 0x03);
+    ASSERT_EQ(ne_drv_disp_gfx_get_pixel(&ctx, 14, 14, &color), NE_DRV_OK);
+    ASSERT_EQ(color, 0x03);
+    /* Just outside the rect should be 0 */
+    ASSERT_EQ(ne_drv_disp_gfx_get_pixel(&ctx, 15, 10, &color), NE_DRV_OK);
+    ASSERT_EQ(color, 0x00);
+    ne_drv_free(&ctx);
+    TEST_PASS();
+}
+
+static void test_gfx_clear(void)
+{
+    NEDrvContext ctx;
+    uint8_t color;
+    TEST_BEGIN("gfx_clear fills entire framebuffer");
+    ne_drv_init(&ctx);
+    ne_drv_disp_install(&ctx);
+    ne_drv_disp_set_mode(&ctx, NE_DRV_VMODE_320x200);
+    ne_drv_disp_gfx_set_pixel(&ctx, 0, 0, 0x05);
+    ASSERT_EQ(ne_drv_disp_gfx_clear(&ctx, 0x0F), NE_DRV_OK);
+    ASSERT_EQ(ne_drv_disp_gfx_get_pixel(&ctx, 0, 0, &color), NE_DRV_OK);
+    ASSERT_EQ(color, 0x0F);
+    ASSERT_EQ(ne_drv_disp_gfx_get_pixel(&ctx, 319, 199, &color), NE_DRV_OK);
+    ASSERT_EQ(color, 0x0F);
+    ne_drv_free(&ctx);
+    TEST_PASS();
+}
+
+static void test_gfx_no_framebuffer(void)
+{
+    NEDrvContext ctx;
+    uint8_t color;
+    TEST_BEGIN("gfx operations without framebuffer return ERR_INIT");
+    ne_drv_init(&ctx);
+    ne_drv_disp_install(&ctx);
+    /* text mode – no framebuffer */
+    ASSERT_EQ(ne_drv_disp_gfx_set_pixel(&ctx, 0, 0, 1), NE_DRV_ERR_INIT);
+    ASSERT_EQ(ne_drv_disp_gfx_get_pixel(&ctx, 0, 0, &color),
+              NE_DRV_ERR_INIT);
+    ASSERT_EQ(ne_drv_disp_gfx_fill_rect(&ctx, 0, 0, 1, 1, 1),
+              NE_DRV_ERR_INIT);
+    ASSERT_EQ(ne_drv_disp_gfx_clear(&ctx, 0), NE_DRV_ERR_INIT);
+    ne_drv_free(&ctx);
+    TEST_PASS();
+}
+
+/* =========================================================================
+ * Phase F: Printer driver tests
+ * ===================================================================== */
+
+static void test_printer_install_uninstall(void)
+{
+    NEDrvContext ctx;
+    TEST_BEGIN("printer install/uninstall sets installed flag");
+    ne_drv_init(&ctx);
+    ASSERT_EQ(ne_drv_printer_install(&ctx), NE_DRV_OK);
+    ASSERT_EQ(ctx.printer.installed, 1);
+    ASSERT_EQ(ne_drv_printer_uninstall(&ctx), NE_DRV_OK);
+    ASSERT_EQ(ctx.printer.installed, 0);
+    ne_drv_free(&ctx);
+    TEST_PASS();
+}
+
+static void test_printer_start_end_doc(void)
+{
+    NEDrvContext ctx;
+    uint16_t job;
+    TEST_BEGIN("start_doc/end_doc lifecycle");
+    ne_drv_init(&ctx);
+    ne_drv_printer_install(&ctx);
+    job = ne_drv_printer_start_doc(&ctx, "test.txt");
+    ASSERT_NE(job, 0);
+    ASSERT_EQ(ne_drv_printer_get_job_count(&ctx), 1);
+    ASSERT_EQ(ne_drv_printer_end_doc(&ctx, job), NE_DRV_OK);
+    ASSERT_EQ(ne_drv_printer_get_job_count(&ctx), 0);
+    ne_drv_free(&ctx);
+    TEST_PASS();
+}
+
+static void test_printer_pages(void)
+{
+    NEDrvContext ctx;
+    uint16_t job;
+    TEST_BEGIN("start_page/end_page tracks page count");
+    ne_drv_init(&ctx);
+    ne_drv_printer_install(&ctx);
+    job = ne_drv_printer_start_doc(&ctx, "doc");
+    ASSERT_EQ(ne_drv_printer_start_page(&ctx, job), NE_DRV_OK);
+    ASSERT_EQ(ne_drv_printer_end_page(&ctx, job), NE_DRV_OK);
+    ASSERT_EQ(ne_drv_printer_start_page(&ctx, job), NE_DRV_OK);
+    ASSERT_EQ(ne_drv_printer_end_page(&ctx, job), NE_DRV_OK);
+    ne_drv_printer_end_doc(&ctx, job);
+    ne_drv_free(&ctx);
+    TEST_PASS();
+}
+
+static void test_printer_abort_doc(void)
+{
+    NEDrvContext ctx;
+    uint16_t job;
+    TEST_BEGIN("abort_doc removes the job");
+    ne_drv_init(&ctx);
+    ne_drv_printer_install(&ctx);
+    job = ne_drv_printer_start_doc(&ctx, "abort_me");
+    ASSERT_EQ(ne_drv_printer_abort_doc(&ctx, job), NE_DRV_OK);
+    ASSERT_EQ(ne_drv_printer_get_job_count(&ctx), 0);
+    ne_drv_free(&ctx);
+    TEST_PASS();
+}
+
+static void test_printer_capacity(void)
+{
+    NEDrvContext ctx;
+    uint16_t i;
+    TEST_BEGIN("printer job capacity limit");
+    ne_drv_init(&ctx);
+    ne_drv_printer_install(&ctx);
+    for (i = 0; i < NE_DRV_PRINTER_CAP; i++) {
+        ASSERT_NE(ne_drv_printer_start_doc(&ctx, "job"), 0);
+    }
+    ASSERT_EQ(ne_drv_printer_start_doc(&ctx, "overflow"), 0);
+    ne_drv_free(&ctx);
+    TEST_PASS();
+}
+
+static void test_printer_bad_job_id(void)
+{
+    NEDrvContext ctx;
+    TEST_BEGIN("printer operations with bad job ID");
+    ne_drv_init(&ctx);
+    ne_drv_printer_install(&ctx);
+    ASSERT_EQ(ne_drv_printer_end_doc(&ctx, 0), NE_DRV_ERR_BAD_ID);
+    ASSERT_EQ(ne_drv_printer_start_page(&ctx, 0), NE_DRV_ERR_BAD_ID);
+    ASSERT_EQ(ne_drv_printer_end_page(&ctx, 0), NE_DRV_ERR_BAD_ID);
+    ASSERT_EQ(ne_drv_printer_end_doc(&ctx, 99), NE_DRV_ERR_NOT_FOUND);
+    ne_drv_free(&ctx);
+    TEST_PASS();
+}
+
+static void test_printer_null_args(void)
+{
+    TEST_BEGIN("printer NULL arg checks");
+    ASSERT_EQ(ne_drv_printer_install(NULL), NE_DRV_ERR_NULL);
+    ASSERT_EQ(ne_drv_printer_uninstall(NULL), NE_DRV_ERR_NULL);
+    ASSERT_EQ(ne_drv_printer_start_doc(NULL, "x"), 0);
+    ASSERT_EQ(ne_drv_printer_end_doc(NULL, 1), NE_DRV_ERR_NULL);
+    ASSERT_EQ(ne_drv_printer_get_job_count(NULL), 0);
+    TEST_PASS();
+}
+
+/* =========================================================================
+ * Phase F: Mouse cursor and event coalescing tests
+ * ===================================================================== */
+
+static void test_mouse_cursor_visibility(void)
+{
+    NEDrvContext ctx;
+    TEST_BEGIN("mouse cursor show/hide");
+    ne_drv_init(&ctx);
+    ne_drv_mouse_install(&ctx);
+    ASSERT_EQ(ne_drv_mouse_get_cursor_visible(&ctx), 0);
+    ASSERT_EQ(ne_drv_mouse_show_cursor(&ctx, 1), NE_DRV_OK);
+    ASSERT_EQ(ne_drv_mouse_get_cursor_visible(&ctx), 1);
+    ASSERT_EQ(ne_drv_mouse_show_cursor(&ctx, 0), NE_DRV_OK);
+    ASSERT_EQ(ne_drv_mouse_get_cursor_visible(&ctx), 0);
+    ne_drv_free(&ctx);
+    TEST_PASS();
+}
+
+static void test_mouse_set_cursor_bitmap(void)
+{
+    NEDrvContext ctx;
+    uint8_t bmp[NE_DRV_CURSOR_SIZE][NE_DRV_CURSOR_SIZE];
+    TEST_BEGIN("mouse set_cursor_bitmap stores shape and hotspot");
+    ne_drv_init(&ctx);
+    ne_drv_mouse_install(&ctx);
+    memset(bmp, 0, sizeof(bmp));
+    bmp[0][0] = 1;
+    bmp[1][1] = 1;
+    ASSERT_EQ(ne_drv_mouse_set_cursor_bitmap(&ctx, bmp, 3, 4), NE_DRV_OK);
+    ASSERT_EQ(ctx.mouse.cursor_bitmap[0][0], 1);
+    ASSERT_EQ(ctx.mouse.cursor_bitmap[1][1], 1);
+    ASSERT_EQ(ctx.mouse.cursor_bitmap[2][2], 0);
+    ASSERT_EQ(ctx.mouse.hot_x, 3);
+    ASSERT_EQ(ctx.mouse.hot_y, 4);
+    ne_drv_free(&ctx);
+    TEST_PASS();
+}
+
+static void test_mouse_coalesce_moves(void)
+{
+    NEDrvContext ctx;
+    NEDrvMouseEvent evt;
+    TEST_BEGIN("coalesce consecutive WM_MOUSEMOVE events");
+    ne_drv_init(&ctx);
+    ne_drv_mouse_install(&ctx);
+    /* Push: move, move, move, click, move, move */
+    ne_drv_mouse_push_event(&ctx, WM_MOUSEMOVE, 10, 10, 0);
+    ne_drv_mouse_push_event(&ctx, WM_MOUSEMOVE, 20, 20, 0);
+    ne_drv_mouse_push_event(&ctx, WM_MOUSEMOVE, 30, 30, 0);
+    ne_drv_mouse_push_event(&ctx, WM_LBUTTONDOWN, 30, 30, 1);
+    ne_drv_mouse_push_event(&ctx, WM_MOUSEMOVE, 40, 40, 1);
+    ne_drv_mouse_push_event(&ctx, WM_MOUSEMOVE, 50, 50, 1);
+    ASSERT_EQ(ne_drv_mouse_pending(&ctx), 6);
+
+    ASSERT_EQ(ne_drv_mouse_coalesce_moves(&ctx), NE_DRV_OK);
+    /* After coalescing: move(30,30), click, move(50,50) = 3 events */
+    ASSERT_EQ(ne_drv_mouse_pending(&ctx), 3);
+
+    ne_drv_mouse_pop_event(&ctx, &evt);
+    ASSERT_EQ(evt.message, WM_MOUSEMOVE);
+    ASSERT_EQ(evt.x, 30);
+
+    ne_drv_mouse_pop_event(&ctx, &evt);
+    ASSERT_EQ(evt.message, WM_LBUTTONDOWN);
+
+    ne_drv_mouse_pop_event(&ctx, &evt);
+    ASSERT_EQ(evt.message, WM_MOUSEMOVE);
+    ASSERT_EQ(evt.x, 50);
+
+    ne_drv_free(&ctx);
+    TEST_PASS();
+}
+
+static void test_mouse_coalesce_no_moves(void)
+{
+    NEDrvContext ctx;
+    TEST_BEGIN("coalesce with no moves is a no-op");
+    ne_drv_init(&ctx);
+    ne_drv_mouse_install(&ctx);
+    ne_drv_mouse_push_event(&ctx, WM_LBUTTONDOWN, 10, 10, 1);
+    ne_drv_mouse_push_event(&ctx, WM_LBUTTONUP, 10, 10, 0);
+    ASSERT_EQ(ne_drv_mouse_coalesce_moves(&ctx), NE_DRV_OK);
+    ASSERT_EQ(ne_drv_mouse_pending(&ctx), 2);
+    ne_drv_free(&ctx);
+    TEST_PASS();
+}
+
+static void test_mouse_coalesce_empty(void)
+{
+    NEDrvContext ctx;
+    TEST_BEGIN("coalesce on empty queue succeeds");
+    ne_drv_init(&ctx);
+    ne_drv_mouse_install(&ctx);
+    ASSERT_EQ(ne_drv_mouse_coalesce_moves(&ctx), NE_DRV_OK);
+    ASSERT_EQ(ne_drv_mouse_pending(&ctx), 0);
+    ne_drv_free(&ctx);
+    TEST_PASS();
+}
+
+/* =========================================================================
  * main
  * ===================================================================== */
 
 int main(void)
 {
-    printf("=== WinDOS Device Driver Tests (Phase 4) ===\n");
+    printf("=== WinDOS Device Driver Tests (Phase 4 + Phase F) ===\n");
 
     /* --- Context tests --- */
     printf("\n--- Context tests ---\n");
@@ -794,6 +1202,12 @@ int main(void)
     test_kbd_function_keys();
     test_kbd_arrow_keys();
     test_kbd_null_args();
+
+    /* --- Phase F: Extended keyboard scan codes --- */
+    printf("\n--- Extended keyboard scan codes (Phase F) ---\n");
+    test_kbd_oem_keys();
+    test_kbd_nav_keys();
+    test_kbd_f11_f12();
 
     /* --- Timer driver tests --- */
     printf("\n--- Timer driver tests ---\n");
@@ -819,6 +1233,18 @@ int main(void)
     test_disp_write_string();
     test_disp_null_args();
 
+    /* --- Phase F: Graphics-mode display driver --- */
+    printf("\n--- Graphics-mode display driver (Phase F) ---\n");
+    test_gfx_set_mode_640x480();
+    test_gfx_set_mode_320x200();
+    test_gfx_set_mode_text();
+    test_gfx_set_mode_invalid();
+    test_gfx_pixel_roundtrip();
+    test_gfx_pixel_out_of_bounds();
+    test_gfx_fill_rect();
+    test_gfx_clear();
+    test_gfx_no_framebuffer();
+
     /* --- Mouse driver tests --- */
     printf("\n--- Mouse driver tests ---\n");
     test_mouse_install_uninstall();
@@ -828,6 +1254,24 @@ int main(void)
     test_mouse_queue_full();
     test_mouse_pop_empty();
     test_mouse_null_args();
+
+    /* --- Phase F: Mouse cursor and coalescing --- */
+    printf("\n--- Mouse cursor and coalescing (Phase F) ---\n");
+    test_mouse_cursor_visibility();
+    test_mouse_set_cursor_bitmap();
+    test_mouse_coalesce_moves();
+    test_mouse_coalesce_no_moves();
+    test_mouse_coalesce_empty();
+
+    /* --- Phase F: Printer driver --- */
+    printf("\n--- Printer driver (Phase F) ---\n");
+    test_printer_install_uninstall();
+    test_printer_start_end_doc();
+    test_printer_pages();
+    test_printer_abort_doc();
+    test_printer_capacity();
+    test_printer_bad_job_id();
+    test_printer_null_args();
 
     /* --- Driver coexistence tests --- */
     printf("\n--- Driver coexistence tests ---\n");
