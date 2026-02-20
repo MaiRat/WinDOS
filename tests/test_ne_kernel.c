@@ -1769,7 +1769,6 @@ static void test_write_private_profile_string_delete_key(void)
     NEModuleTable   modules;
     NEKernelContext ctx;
     char            buf[64];
-    int             len;
 
     TEST_BEGIN("WritePrivateProfileString: delete key (NULL value)");
 
@@ -1784,7 +1783,7 @@ static void test_write_private_profile_string_delete_key(void)
         &ctx, "App", "Delete", NULL, PHASE_B_TEST_INI);
 
     /* Deleted key should return default */
-    len = ne_kernel_get_private_profile_string(
+    ne_kernel_get_private_profile_string(
         &ctx, "App", "Delete", "gone",
         buf, sizeof(buf), PHASE_B_TEST_INI);
     ASSERT_STR_EQ(buf, "gone");
