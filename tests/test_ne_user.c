@@ -533,12 +533,417 @@ static void test_user_strerror(void)
 }
 
 /* =========================================================================
+ * Phase D tests
+ * ===================================================================== */
+
+/* --- MessageBox tests --- */
+
+static void test_message_box_ok(void)
+{
+    NEUserContext ctx;
+    TEST_BEGIN("MessageBox MB_OK returns IDOK");
+    ne_user_init(&ctx);
+    ASSERT_EQ(ne_user_message_box(&ctx, 0, "Hello", "Title", MB_OK), IDOK);
+    ne_user_free(&ctx);
+    TEST_PASS();
+}
+
+static void test_message_box_yesno(void)
+{
+    NEUserContext ctx;
+    TEST_BEGIN("MessageBox MB_YESNO returns IDYES");
+    ne_user_init(&ctx);
+    ASSERT_EQ(ne_user_message_box(&ctx, 0, "Q?", "Ask", MB_YESNO), IDYES);
+    ne_user_free(&ctx);
+    TEST_PASS();
+}
+
+/* --- Dialog tests --- */
+
+static uint32_t dlg_proc(uint16_t hwnd, uint16_t msg,
+                         uint16_t wParam, uint32_t lParam)
+{
+    (void)hwnd; (void)wParam; (void)lParam;
+    if (msg == WM_CREATE) return 1;
+    return 0;
+}
+
+static void test_create_end_dialog(void)
+{
+    NEUserContext ctx;
+    NEUserHWND dlg;
+    TEST_BEGIN("CreateDialog creates window, EndDialog destroys it");
+    ne_user_init(&ctx);
+    dlg = ne_user_create_dialog(&ctx, "TestDlg", NE_USER_HWND_INVALID,
+                                dlg_proc);
+    ASSERT_NE(dlg, NE_USER_HWND_INVALID);
+    ASSERT_EQ(ctx.wnd_count, 1);
+    ASSERT_EQ(ne_user_end_dialog(&ctx, dlg, 0), NE_USER_OK);
+    ASSERT_EQ(ctx.wnd_count, 0);
+    ne_user_free(&ctx);
+    TEST_PASS();
+}
+
+static void test_dialog_box(void)
+{
+    NEUserContext ctx;
+    TEST_BEGIN("DialogBox runs and returns 0");
+    ne_user_init(&ctx);
+    ASSERT_EQ(ne_user_dialog_box(&ctx, "DlgTmpl", NE_USER_HWND_INVALID,
+                                 dlg_proc), 0);
+    ne_user_free(&ctx);
+    TEST_PASS();
+}
+
+/* --- Capture tests --- */
+
+static void test_set_release_capture(void)
+{
+    NEUserContext ctx;
+    NEUserHWND hwnd, prev;
+    TEST_BEGIN("SetCapture / ReleaseCapture tracks capture");
+    ne_user_init(&ctx);
+    ne_user_register_class(&ctx, "Cap", simple_wndproc, 0);
+    hwnd = ne_user_create_window(&ctx, "Cap", NE_USER_HWND_INVALID, 0);
+    prev = ne_user_set_capture(&ctx, hwnd);
+    ASSERT_EQ(prev, NE_USER_HWND_INVALID);
+    ASSERT_EQ(ctx.capture_hwnd, hwnd);
+    ne_user_release_capture(&ctx);
+    ASSERT_EQ(ctx.capture_hwnd, NE_USER_HWND_INVALID);
+    ne_user_free(&ctx);
+    TEST_PASS();
+}
+
+/* --- Rectangle tests --- */
+
+static void test_get_client_rect(void)
+{
+    NEUserContext ctx;
+    NEUserHWND hwnd;
+    NEUserRect rect;
+    TEST_BEGIN("GetClientRect returns (0,0,width,height)");
+    ne_user_init(&ctx);
+    ne_user_register_class(&ctx, "Rect", simple_wndproc, 0);
+    hwnd = ne_user_create_window(&ctx, "Rect", NE_USER_HWND_INVALID, 0);
+    ASSERT_EQ(ne_user_get_client_rect(&ctx, hwnd, &rect), NE_USER_OK);
+    ASSERT_EQ(rect.left, 0);
+    ASSERT_EQ(rect.top, 0);
+    ASSERT_EQ(rect.right, 100);   /* default width */
+    ASSERT_EQ(rect.bottom, 50);   /* default height */
+    ne_user_free(&ctx);
+    TEST_PASS();
+}
+
+static void test_get_window_rect(void)
+{
+    NEUserContext ctx;
+    NEUserHWND hwnd;
+    NEUserRect rect;
+    TEST_BEGIN("GetWindowRect returns (x,y,x+w,y+h)");
+    ne_user_init(&ctx);
+    ne_user_register_class(&ctx, "WR", simple_wndproc, 0);
+    hwnd = ne_user_create_window(&ctx, "WR", NE_USER_HWND_INVALID, 0);
+    ne_user_move_window(&ctx, hwnd, 10, 20, 200, 150, 0);
+    ASSERT_EQ(ne_user_get_window_rect(&ctx, hwnd, &rect), NE_USER_OK);
+    ASSERT_EQ(rect.left, 10);
+    ASSERT_EQ(rect.top, 20);
+    ASSERT_EQ(rect.right, 210);
+    ASSERT_EQ(rect.bottom, 170);
+    ne_user_free(&ctx);
+    TEST_PASS();
+}
+
+/* --- MoveWindow / SetWindowPos tests --- */
+
+static void test_move_window(void)
+{
+    NEUserContext ctx;
+    NEUserHWND hwnd;
+    NEUserRect rect;
+    TEST_BEGIN("MoveWindow updates position and size");
+    ne_user_init(&ctx);
+    ne_user_register_class(&ctx, "Mv", simple_wndproc, 0);
+    hwnd = ne_user_create_window(&ctx, "Mv", NE_USER_HWND_INVALID, 0);
+    ASSERT_EQ(ne_user_move_window(&ctx, hwnd, 5, 10, 300, 200, 0),
+              NE_USER_OK);
+    ne_user_get_client_rect(&ctx, hwnd, &rect);
+    ASSERT_EQ(rect.right, 300);
+    ASSERT_EQ(rect.bottom, 200);
+    ne_user_free(&ctx);
+    TEST_PASS();
+}
+
+static void test_set_window_pos(void)
+{
+    NEUserContext ctx;
+    NEUserHWND hwnd;
+    NEUserRect rect;
+    TEST_BEGIN("SetWindowPos updates position and size");
+    ne_user_init(&ctx);
+    ne_user_register_class(&ctx, "SP", simple_wndproc, 0);
+    hwnd = ne_user_create_window(&ctx, "SP", NE_USER_HWND_INVALID, 0);
+    ASSERT_EQ(ne_user_set_window_pos(&ctx, hwnd, 0, 15, 25, 400, 300, 0),
+              NE_USER_OK);
+    ne_user_get_window_rect(&ctx, hwnd, &rect);
+    ASSERT_EQ(rect.left, 15);
+    ASSERT_EQ(rect.top, 25);
+    ne_user_free(&ctx);
+    TEST_PASS();
+}
+
+/* --- Window text tests --- */
+
+static void test_set_get_window_text(void)
+{
+    NEUserContext ctx;
+    NEUserHWND hwnd;
+    char buf[64];
+    int len;
+    TEST_BEGIN("SetWindowText / GetWindowText round-trip");
+    ne_user_init(&ctx);
+    ne_user_register_class(&ctx, "Txt", simple_wndproc, 0);
+    hwnd = ne_user_create_window(&ctx, "Txt", NE_USER_HWND_INVALID, 0);
+    ASSERT_EQ(ne_user_set_window_text(&ctx, hwnd, "Hello WinDOS"),
+              NE_USER_OK);
+    len = ne_user_get_window_text(&ctx, hwnd, buf, sizeof(buf));
+    ASSERT_EQ(len, 12);
+    ASSERT_STR_EQ(buf, "Hello WinDOS");
+    ne_user_free(&ctx);
+    TEST_PASS();
+}
+
+/* --- EnableWindow / IsWindowEnabled / IsWindowVisible tests --- */
+
+static void test_enable_window(void)
+{
+    NEUserContext ctx;
+    NEUserHWND hwnd;
+    TEST_BEGIN("EnableWindow toggles enabled state");
+    ne_user_init(&ctx);
+    ne_user_register_class(&ctx, "En", simple_wndproc, 0);
+    hwnd = ne_user_create_window(&ctx, "En", NE_USER_HWND_INVALID, 0);
+    ASSERT_EQ(ne_user_is_window_enabled(&ctx, hwnd), 1);
+    ne_user_enable_window(&ctx, hwnd, 0);
+    ASSERT_EQ(ne_user_is_window_enabled(&ctx, hwnd), 0);
+    ne_user_enable_window(&ctx, hwnd, 1);
+    ASSERT_EQ(ne_user_is_window_enabled(&ctx, hwnd), 1);
+    ne_user_free(&ctx);
+    TEST_PASS();
+}
+
+static void test_is_window_visible(void)
+{
+    NEUserContext ctx;
+    NEUserHWND hwnd;
+    TEST_BEGIN("IsWindowVisible reflects show/hide state");
+    ne_user_init(&ctx);
+    ne_user_register_class(&ctx, "IV", simple_wndproc, 0);
+    hwnd = ne_user_create_window(&ctx, "IV", NE_USER_HWND_INVALID, 0);
+    ASSERT_EQ(ne_user_is_window_visible(&ctx, hwnd), 0);
+    ne_user_show_window(&ctx, hwnd, SW_SHOW);
+    ASSERT_EQ(ne_user_is_window_visible(&ctx, hwnd), 1);
+    ne_user_show_window(&ctx, hwnd, SW_HIDE);
+    ASSERT_EQ(ne_user_is_window_visible(&ctx, hwnd), 0);
+    ne_user_free(&ctx);
+    TEST_PASS();
+}
+
+/* --- Focus tests --- */
+
+static void test_set_get_focus(void)
+{
+    NEUserContext ctx;
+    NEUserHWND hwnd, prev;
+    TEST_BEGIN("SetFocus / GetFocus track input focus");
+    ne_user_init(&ctx);
+    ne_user_register_class(&ctx, "Foc", simple_wndproc, 0);
+    hwnd = ne_user_create_window(&ctx, "Foc", NE_USER_HWND_INVALID, 0);
+    ASSERT_EQ(ne_user_get_focus(&ctx), NE_USER_HWND_INVALID);
+    prev = ne_user_set_focus(&ctx, hwnd);
+    ASSERT_EQ(prev, NE_USER_HWND_INVALID);
+    ASSERT_EQ(ne_user_get_focus(&ctx), hwnd);
+    ne_user_free(&ctx);
+    TEST_PASS();
+}
+
+/* --- Invalidate / Validate tests --- */
+
+static void test_invalidate_validate_rect(void)
+{
+    NEUserContext ctx;
+    NEUserHWND hwnd;
+    NEUserWindow *wnd = NULL;
+    uint16_t i;
+    TEST_BEGIN("InvalidateRect / ValidateRect toggle needs_paint");
+    ne_user_init(&ctx);
+    ne_user_register_class(&ctx, "Inv", simple_wndproc, 0);
+    hwnd = ne_user_create_window(&ctx, "Inv", NE_USER_HWND_INVALID, 0);
+    for (i = 0; i < NE_USER_WND_CAP; i++) {
+        if (ctx.windows[i].active && ctx.windows[i].hwnd == hwnd) {
+            wnd = &ctx.windows[i];
+            break;
+        }
+    }
+    ASSERT_NOT_NULL(wnd);
+    ASSERT_EQ(wnd->needs_paint, 0);
+    ne_user_invalidate_rect(&ctx, hwnd, NULL, 1);
+    ASSERT_EQ(wnd->needs_paint, 1);
+    ne_user_validate_rect(&ctx, hwnd, NULL);
+    ASSERT_EQ(wnd->needs_paint, 0);
+    ne_user_free(&ctx);
+    TEST_PASS();
+}
+
+/* --- ScrollWindow test --- */
+
+static void test_scroll_window(void)
+{
+    NEUserContext ctx;
+    NEUserHWND hwnd;
+    NEUserWindow *wnd = NULL;
+    uint16_t i;
+    TEST_BEGIN("ScrollWindow marks window for repaint");
+    ne_user_init(&ctx);
+    ne_user_register_class(&ctx, "Scr", simple_wndproc, 0);
+    hwnd = ne_user_create_window(&ctx, "Scr", NE_USER_HWND_INVALID, 0);
+    for (i = 0; i < NE_USER_WND_CAP; i++) {
+        if (ctx.windows[i].active && ctx.windows[i].hwnd == hwnd) {
+            wnd = &ctx.windows[i];
+            break;
+        }
+    }
+    ASSERT_NOT_NULL(wnd);
+    wnd->needs_paint = 0;
+    ne_user_scroll_window(&ctx, hwnd, 10, 20, NULL, NULL);
+    ASSERT_EQ(wnd->needs_paint, 1);
+    ne_user_free(&ctx);
+    TEST_PASS();
+}
+
+/* --- Timer tests --- */
+
+static void test_set_kill_timer(void)
+{
+    NEUserContext ctx;
+    TEST_BEGIN("SetTimer returns id, KillTimer succeeds");
+    ne_user_init(&ctx);
+    ASSERT_NE(ne_user_set_timer(&ctx, 1, 100, 1000), (uint16_t)0);
+    ASSERT_EQ(ne_user_kill_timer(&ctx, 1, 100), NE_USER_OK);
+    ne_user_free(&ctx);
+    TEST_PASS();
+}
+
+/* --- Clipboard tests --- */
+
+static void test_clipboard_roundtrip(void)
+{
+    NEUserContext ctx;
+    const char *data = "clip data";
+    char buf[32];
+    uint16_t out_size = 0;
+    TEST_BEGIN("Clipboard open/set/get/close round-trip");
+    ne_user_init(&ctx);
+    ASSERT_EQ(ne_user_open_clipboard(&ctx, 1), NE_USER_OK);
+    ASSERT_EQ(ne_user_set_clipboard_data(&ctx, 1, data, 9), NE_USER_OK);
+    ASSERT_EQ(ne_user_get_clipboard_data(&ctx, 1, buf, sizeof(buf),
+                                         &out_size), NE_USER_OK);
+    ASSERT_EQ(out_size, 9);
+    ASSERT_EQ(ne_user_close_clipboard(&ctx), NE_USER_OK);
+    ne_user_free(&ctx);
+    TEST_PASS();
+}
+
+static void test_clipboard_double_open(void)
+{
+    NEUserContext ctx;
+    TEST_BEGIN("Clipboard double-open returns ERR_FULL");
+    ne_user_init(&ctx);
+    ASSERT_EQ(ne_user_open_clipboard(&ctx, 1), NE_USER_OK);
+    ASSERT_EQ(ne_user_open_clipboard(&ctx, 2), NE_USER_ERR_FULL);
+    ne_user_close_clipboard(&ctx);
+    ne_user_free(&ctx);
+    TEST_PASS();
+}
+
+/* --- Caret tests --- */
+
+static void test_caret_lifecycle(void)
+{
+    NEUserContext ctx;
+    TEST_BEGIN("Caret create/position/show/hide/destroy lifecycle");
+    ne_user_init(&ctx);
+    ASSERT_EQ(ne_user_create_caret(&ctx, 1, 2, 16), NE_USER_OK);
+    ASSERT_EQ(ctx.caret.created, 1);
+    ASSERT_EQ(ne_user_set_caret_pos(&ctx, 10, 20), NE_USER_OK);
+    ASSERT_EQ(ctx.caret.x, 10);
+    ASSERT_EQ(ctx.caret.y, 20);
+    ASSERT_EQ(ne_user_show_caret(&ctx, 1), NE_USER_OK);
+    ASSERT_EQ(ctx.caret.visible, 1);
+    ASSERT_EQ(ne_user_hide_caret(&ctx, 1), NE_USER_OK);
+    ASSERT_EQ(ctx.caret.visible, 0);
+    ASSERT_EQ(ne_user_destroy_caret(&ctx), NE_USER_OK);
+    ASSERT_EQ(ctx.caret.created, 0);
+    ne_user_free(&ctx);
+    TEST_PASS();
+}
+
+/* --- Key state tests --- */
+
+static void test_key_state(void)
+{
+    NEUserContext ctx;
+    TEST_BEGIN("GetKeyState returns 0x8000 when key is down");
+    ne_user_init(&ctx);
+    ASSERT_EQ(ne_user_get_key_state(&ctx, 0x41), 0);
+    ctx.key_state[0x41] = 1;
+    ASSERT_NE(ne_user_get_key_state(&ctx, 0x41), 0);
+    ASSERT_NE(ne_user_get_async_key_state(&ctx, 0x41), 0);
+    ne_user_free(&ctx);
+    TEST_PASS();
+}
+
+/* --- Menu tests --- */
+
+static void test_menu_create_append_destroy(void)
+{
+    NEUserContext ctx;
+    uint16_t hmenu;
+    TEST_BEGIN("CreateMenu / AppendMenu / DestroyMenu lifecycle");
+    ne_user_init(&ctx);
+    hmenu = ne_user_create_menu(&ctx);
+    ASSERT_NE(hmenu, (uint16_t)0);
+    ASSERT_EQ(ctx.menu_count, 1);
+    ASSERT_EQ(ne_user_append_menu(&ctx, hmenu, 0, 101, "File"), NE_USER_OK);
+    ASSERT_EQ(ne_user_append_menu(&ctx, hmenu, 0, 102, "Edit"), NE_USER_OK);
+    ASSERT_EQ(ne_user_destroy_menu(&ctx, hmenu), NE_USER_OK);
+    ASSERT_EQ(ctx.menu_count, 0);
+    ne_user_free(&ctx);
+    TEST_PASS();
+}
+
+static void test_menu_set_get(void)
+{
+    NEUserContext ctx;
+    NEUserHWND hwnd;
+    uint16_t hmenu;
+    TEST_BEGIN("SetMenu / GetMenu attach menu to window");
+    ne_user_init(&ctx);
+    ne_user_register_class(&ctx, "Mn", simple_wndproc, 0);
+    hwnd = ne_user_create_window(&ctx, "Mn", NE_USER_HWND_INVALID, 0);
+    hmenu = ne_user_create_menu(&ctx);
+    ASSERT_EQ(ne_user_set_menu(&ctx, hwnd, hmenu), NE_USER_OK);
+    ASSERT_EQ(ne_user_get_menu(&ctx, hwnd), hmenu);
+    ne_user_free(&ctx);
+    TEST_PASS();
+}
+
+/* =========================================================================
  * main
  * ===================================================================== */
 
 int main(void)
 {
-    printf("=== WinDOS USER.EXE Subsystem Tests (Phase 3) ===\n");
+    printf("=== WinDOS USER.EXE Subsystem Tests (Phase 3 + Phase D) ===\n");
 
     /* --- Context tests --- */
     printf("\n--- Context tests ---\n");
@@ -584,6 +989,73 @@ int main(void)
     /* --- Error strings --- */
     printf("\n--- Error strings ---\n");
     test_user_strerror();
+
+    /* --- Phase D: MessageBox tests --- */
+    printf("\n--- Phase D: MessageBox tests ---\n");
+    test_message_box_ok();
+    test_message_box_yesno();
+
+    /* --- Phase D: Dialog tests --- */
+    printf("\n--- Phase D: Dialog tests ---\n");
+    test_create_end_dialog();
+    test_dialog_box();
+
+    /* --- Phase D: Capture tests --- */
+    printf("\n--- Phase D: Capture tests ---\n");
+    test_set_release_capture();
+
+    /* --- Phase D: Rectangle tests --- */
+    printf("\n--- Phase D: Rectangle tests ---\n");
+    test_get_client_rect();
+    test_get_window_rect();
+
+    /* --- Phase D: MoveWindow / SetWindowPos tests --- */
+    printf("\n--- Phase D: MoveWindow / SetWindowPos tests ---\n");
+    test_move_window();
+    test_set_window_pos();
+
+    /* --- Phase D: Window text tests --- */
+    printf("\n--- Phase D: Window text tests ---\n");
+    test_set_get_window_text();
+
+    /* --- Phase D: Window state tests --- */
+    printf("\n--- Phase D: Window state tests ---\n");
+    test_enable_window();
+    test_is_window_visible();
+
+    /* --- Phase D: Focus tests --- */
+    printf("\n--- Phase D: Focus tests ---\n");
+    test_set_get_focus();
+
+    /* --- Phase D: Invalidate / Validate tests --- */
+    printf("\n--- Phase D: Invalidate / Validate tests ---\n");
+    test_invalidate_validate_rect();
+
+    /* --- Phase D: ScrollWindow tests --- */
+    printf("\n--- Phase D: ScrollWindow tests ---\n");
+    test_scroll_window();
+
+    /* --- Phase D: Timer tests --- */
+    printf("\n--- Phase D: Timer tests ---\n");
+    test_set_kill_timer();
+
+    /* --- Phase D: Clipboard tests --- */
+    printf("\n--- Phase D: Clipboard tests ---\n");
+    test_clipboard_roundtrip();
+    test_clipboard_double_open();
+
+    /* --- Phase D: Caret tests --- */
+    printf("\n--- Phase D: Caret tests ---\n");
+    test_caret_lifecycle();
+
+    /* --- Phase D: Key state tests --- */
+    printf("\n--- Phase D: Key state tests ---\n");
+    test_key_state();
+
+    /* --- Phase D: Menu tests --- */
+    printf("\n--- Phase D: Menu tests ---\n");
+    test_menu_create_append_destroy();
+    test_menu_set_get();
 
     printf("\n=== Results: %d/%d passed",
            g_tests_passed, g_tests_run);

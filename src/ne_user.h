@@ -43,6 +43,8 @@
 #define WS_OVERLAPPED   0x00000000u  /* overlapped (top-level) window       */
 #define WS_VISIBLE      0x10000000u  /* initially visible                   */
 #define WS_CHILD        0x40000000u  /* child window                        */
+#define WS_DISABLED     0x08000000u  /* initially disabled                  */
+#define WS_POPUP        0x80000000u  /* popup window                        */
 
 /* -------------------------------------------------------------------------
  * Window show commands  (ShowWindow nCmdShow values)
@@ -58,6 +60,30 @@
 #define WM_PAINT        0x000Fu      /* paint request                       */
 #define WM_QUIT         0x0012u      /* exit message loop                   */
 #define WM_USER         0x0400u      /* first application-defined message   */
+#define WM_SETFOCUS     0x0007u      /* window gaining input focus          */
+#define WM_KILLFOCUS    0x0008u      /* window losing input focus           */
+#define WM_ENABLE       0x000Au      /* window enabled/disabled             */
+#define WM_SETTEXT      0x000Cu      /* set window text                     */
+#define WM_GETTEXT      0x000Du      /* get window text                     */
+#define WM_GETTEXTLENGTH 0x000Eu     /* get window text length              */
+#define WM_TIMER        0x0113u      /* timer expiration                    */
+#define WM_COMMAND      0x0111u      /* menu / control notification         */
+
+/* -------------------------------------------------------------------------
+ * MessageBox styles
+ * ---------------------------------------------------------------------- */
+#define MB_OK               0x0000u
+#define MB_OKCANCEL         0x0001u
+#define MB_YESNOCANCEL      0x0003u
+#define MB_YESNO            0x0004u
+
+/* -------------------------------------------------------------------------
+ * MessageBox return values
+ * ---------------------------------------------------------------------- */
+#define IDOK                1
+#define IDCANCEL            2
+#define IDYES               6
+#define IDNO                7
 
 /* -------------------------------------------------------------------------
  * Configuration constants
@@ -66,6 +92,11 @@
 #define NE_USER_WNDCLASS_CAP    32u  /* max registered window classes       */
 #define NE_USER_WND_CAP         64u  /* max simultaneous windows            */
 #define NE_USER_CLASSNAME_MAX   64u  /* max class name length incl. NUL     */
+#define NE_USER_WNDTEXT_MAX    128u  /* max window text length incl. NUL    */
+#define NE_USER_CLIP_CAP      4096u  /* max clipboard data size             */
+#define NE_USER_MENU_CAP        32u  /* max menu entries per menu           */
+#define NE_USER_MENU_TABLE_CAP  16u  /* max simultaneously allocated menus  */
+#define NE_USER_KEY_STATE_CAP  256u  /* key state table size                */
 
 /* -------------------------------------------------------------------------
  * Window handle type
@@ -116,6 +147,18 @@ typedef struct {
 } NEUserWndClass;
 
 /* -------------------------------------------------------------------------
+ * Rectangle structure
+ *
+ * Axis-aligned bounding rectangle, matching the Windows 3.1 RECT layout.
+ * ---------------------------------------------------------------------- */
+typedef struct {
+    int16_t left;
+    int16_t top;
+    int16_t right;
+    int16_t bottom;
+} NEUserRect;
+
+/* -------------------------------------------------------------------------
  * Window descriptor
  *
  * One entry per live window.  The 'active' flag is non-zero for entries
@@ -128,6 +171,15 @@ typedef struct {
     uint32_t   style;            /* WS_* style flags                       */
     int        visible;          /* non-zero if currently visible           */
     int        needs_paint;      /* non-zero if WM_PAINT is pending        */
+    char       window_text[NE_USER_WNDTEXT_MAX]; /* window title/text      */
+    int16_t    x;                /* window X position                       */
+    int16_t    y;                /* window Y position                       */
+    int16_t    width;            /* window width                            */
+    int16_t    height;           /* window height                           */
+    int        enabled;          /* non-zero if window is enabled           */
+    NEUserRect invalid_rect;     /* invalidated region                      */
+    int        has_invalid;      /* non-zero if invalid_rect is set         */
+    uint16_t   menu_handle;      /* attached menu handle (0 = none)         */
     int        active;           /* non-zero if slot is in use              */
 } NEUserWindow;
 
@@ -144,6 +196,49 @@ typedef struct {
     uint16_t  tail;              /* index of the next free slot             */
     uint16_t  count;             /* number of messages currently enqueued   */
 } NEUserMsgQueue;
+
+/* -------------------------------------------------------------------------
+ * Menu item descriptor
+ * ---------------------------------------------------------------------- */
+typedef struct {
+    uint16_t id;                   /* menu item command ID                  */
+    char     text[NE_USER_CLASSNAME_MAX]; /* menu item text                 */
+    int      active;               /* non-zero if slot is in use            */
+} NEUserMenuItem;
+
+/* -------------------------------------------------------------------------
+ * Menu descriptor
+ * ---------------------------------------------------------------------- */
+typedef struct {
+    NEUserMenuItem items[NE_USER_MENU_CAP]; /* menu items                   */
+    uint16_t       item_count;     /* number of active items                */
+    uint16_t       handle;         /* non-zero menu handle                  */
+    int            active;         /* non-zero if this menu is allocated    */
+} NEUserMenu;
+
+/* -------------------------------------------------------------------------
+ * Clipboard state
+ * ---------------------------------------------------------------------- */
+typedef struct {
+    uint8_t  data[NE_USER_CLIP_CAP]; /* clipboard data buffer              */
+    uint16_t size;                 /* current data size in bytes            */
+    uint16_t format;               /* clipboard data format                */
+    NEUserHWND owner;              /* window that opened the clipboard     */
+    int      open;                 /* non-zero if clipboard is open         */
+} NEUserClipboard;
+
+/* -------------------------------------------------------------------------
+ * Caret state
+ * ---------------------------------------------------------------------- */
+typedef struct {
+    NEUserHWND owner;              /* window that owns the caret            */
+    int16_t    x;                  /* caret X position                      */
+    int16_t    y;                  /* caret Y position                      */
+    uint16_t   width;              /* caret width                           */
+    uint16_t   height;             /* caret height                          */
+    int        visible;            /* non-zero if caret is visible          */
+    int        created;            /* non-zero if caret has been created    */
+} NEUserCaret;
 
 /* -------------------------------------------------------------------------
  * USER subsystem context
@@ -163,6 +258,19 @@ typedef struct {
 
     int            quit_posted;  /* non-zero after PostQuitMessage          */
     int            quit_code;    /* exit code passed to PostQuitMessage     */
+
+    NEUserHWND     capture_hwnd;  /* window with mouse capture              */
+    NEUserHWND     focus_hwnd;    /* window with input focus                */
+
+    NEUserMenu     menus[NE_USER_MENU_TABLE_CAP]; /* menu table            */
+    uint16_t       menu_count;   /* number of active menus                  */
+    uint16_t       next_menu;    /* next menu handle to assign              */
+
+    NEUserClipboard clipboard;   /* clipboard state                         */
+    NEUserCaret     caret;       /* caret state                             */
+
+    uint8_t        key_state[NE_USER_KEY_STATE_CAP]; /* key state table     */
+
     int            initialized;  /* non-zero after successful init          */
 } NEUserContext;
 
@@ -365,5 +473,102 @@ int ne_user_post_quit_message(NEUserContext *ctx, int exit_code);
  * ne_user_strerror - return a static string describing error code 'err'.
  */
 const char *ne_user_strerror(int err);
+
+/* =========================================================================
+ * Public API – Phase D: USER.EXE Expansion
+ * ===================================================================== */
+
+/* --- MessageBox --- */
+int ne_user_message_box(NEUserContext *ctx, NEUserHWND hwnd,
+                        const char *text, const char *caption,
+                        uint16_t type);
+
+/* --- Dialog APIs --- */
+int ne_user_dialog_box(NEUserContext *ctx, const char *templ_name,
+                       NEUserHWND owner, NEUserWndProc dlg_proc);
+NEUserHWND ne_user_create_dialog(NEUserContext *ctx, const char *templ_name,
+                                 NEUserHWND owner, NEUserWndProc dlg_proc);
+int ne_user_end_dialog(NEUserContext *ctx, NEUserHWND dlg, int result);
+
+/* --- Mouse capture --- */
+NEUserHWND ne_user_set_capture(NEUserContext *ctx, NEUserHWND hwnd);
+int ne_user_release_capture(NEUserContext *ctx);
+
+/* --- Window rectangles --- */
+int ne_user_get_client_rect(NEUserContext *ctx, NEUserHWND hwnd,
+                            NEUserRect *rect);
+int ne_user_get_window_rect(NEUserContext *ctx, NEUserHWND hwnd,
+                            NEUserRect *rect);
+
+/* --- Window position and size --- */
+int ne_user_move_window(NEUserContext *ctx, NEUserHWND hwnd,
+                        int16_t x, int16_t y,
+                        int16_t width, int16_t height, int repaint);
+int ne_user_set_window_pos(NEUserContext *ctx, NEUserHWND hwnd,
+                           NEUserHWND insert_after,
+                           int16_t x, int16_t y,
+                           int16_t cx, int16_t cy, uint16_t flags);
+
+/* --- Window text --- */
+int ne_user_set_window_text(NEUserContext *ctx, NEUserHWND hwnd,
+                            const char *text);
+int ne_user_get_window_text(NEUserContext *ctx, NEUserHWND hwnd,
+                            char *buf, int max_count);
+
+/* --- Window state --- */
+int ne_user_enable_window(NEUserContext *ctx, NEUserHWND hwnd, int enable);
+int ne_user_is_window_enabled(NEUserContext *ctx, NEUserHWND hwnd);
+int ne_user_is_window_visible(NEUserContext *ctx, NEUserHWND hwnd);
+
+/* --- Input focus --- */
+NEUserHWND ne_user_set_focus(NEUserContext *ctx, NEUserHWND hwnd);
+NEUserHWND ne_user_get_focus(NEUserContext *ctx);
+
+/* --- Paint invalidation --- */
+int ne_user_invalidate_rect(NEUserContext *ctx, NEUserHWND hwnd,
+                            const NEUserRect *rect, int erase);
+int ne_user_validate_rect(NEUserContext *ctx, NEUserHWND hwnd,
+                          const NEUserRect *rect);
+
+/* --- Scrolling --- */
+int ne_user_scroll_window(NEUserContext *ctx, NEUserHWND hwnd,
+                          int16_t dx, int16_t dy,
+                          const NEUserRect *scroll_rect,
+                          const NEUserRect *clip_rect);
+
+/* --- Timer wiring (delegates to ne_driver) --- */
+uint16_t ne_user_set_timer(NEUserContext *ctx, NEUserHWND hwnd,
+                           uint16_t id_event, uint32_t elapse);
+int ne_user_kill_timer(NEUserContext *ctx, NEUserHWND hwnd,
+                       uint16_t id_event);
+
+/* --- Clipboard APIs --- */
+int ne_user_open_clipboard(NEUserContext *ctx, NEUserHWND hwnd);
+int ne_user_close_clipboard(NEUserContext *ctx);
+int ne_user_set_clipboard_data(NEUserContext *ctx, uint16_t format,
+                               const void *data, uint16_t size);
+int ne_user_get_clipboard_data(NEUserContext *ctx, uint16_t format,
+                               void *buf, uint16_t buf_size,
+                               uint16_t *out_size);
+
+/* --- Caret APIs --- */
+int ne_user_create_caret(NEUserContext *ctx, NEUserHWND hwnd,
+                         uint16_t width, uint16_t height);
+int ne_user_set_caret_pos(NEUserContext *ctx, int16_t x, int16_t y);
+int ne_user_show_caret(NEUserContext *ctx, NEUserHWND hwnd);
+int ne_user_hide_caret(NEUserContext *ctx, NEUserHWND hwnd);
+int ne_user_destroy_caret(NEUserContext *ctx);
+
+/* --- Input state --- */
+int16_t ne_user_get_key_state(NEUserContext *ctx, int vk);
+int16_t ne_user_get_async_key_state(NEUserContext *ctx, int vk);
+
+/* --- Menu APIs --- */
+uint16_t ne_user_create_menu(NEUserContext *ctx);
+int ne_user_set_menu(NEUserContext *ctx, NEUserHWND hwnd, uint16_t hmenu);
+int ne_user_append_menu(NEUserContext *ctx, uint16_t hmenu,
+                        uint16_t flags, uint16_t id, const char *text);
+uint16_t ne_user_get_menu(NEUserContext *ctx, NEUserHWND hwnd);
+int ne_user_destroy_menu(NEUserContext *ctx, uint16_t hmenu);
 
 #endif /* NE_USER_H */
