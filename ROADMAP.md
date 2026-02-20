@@ -53,14 +53,14 @@ Provide stub or minimal implementations of the most critical KERNEL.EXE exports 
 
 Provide the minimal interfaces required by KERNEL for the USER.EXE and GDI.EXE subsystems.
 
-- [ ] Define the interface boundary between KERNEL and USER (message queue, window class registration, input dispatch).
-- [ ] Implement `GetMessage`, `PeekMessage`, `TranslateMessage`, `DispatchMessage` message loop primitives.
-- [ ] Implement `RegisterClass`, `CreateWindow`, `DestroyWindow`, `ShowWindow`, `UpdateWindow`.
-- [ ] Implement `SendMessage`, `PostMessage`, `DefWindowProc`.
-- [ ] Define the interface boundary between KERNEL and GDI (device context, drawing primitives).
-- [ ] Implement `GetDC`, `ReleaseDC`, `BeginPaint`, `EndPaint`.
-- [ ] Implement basic drawing stubs: `TextOut`, `MoveTo`, `LineTo`, `Rectangle`, `SetPixel`.
-- [ ] Write integration tests that exercise the message loop and basic window lifecycle.
+- [x] Define the interface boundary between KERNEL and USER (message queue, window class registration, input dispatch).
+- [x] Implement `GetMessage`, `PeekMessage`, `TranslateMessage`, `DispatchMessage` message loop primitives.
+- [x] Implement `RegisterClass`, `CreateWindow`, `DestroyWindow`, `ShowWindow`, `UpdateWindow`.
+- [x] Implement `SendMessage`, `PostMessage`, `DefWindowProc`.
+- [x] Define the interface boundary between KERNEL and GDI (device context, drawing primitives).
+- [x] Implement `GetDC`, `ReleaseDC`, `BeginPaint`, `EndPaint`.
+- [x] Implement basic drawing stubs: `TextOut`, `MoveTo`, `LineTo`, `Rectangle`, `SetPixel`.
+- [x] Write integration tests that exercise the message loop and basic window lifecycle.
 
 ## Phase 4 – Device Driver Integration
 
