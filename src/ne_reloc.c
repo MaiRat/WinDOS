@@ -12,8 +12,8 @@
  */
 
 #include "ne_reloc.h"
+#include "ne_dosalloc.h"
 
-#include <stdlib.h>
 #include <string.h>
 
 /* -------------------------------------------------------------------------
@@ -55,7 +55,7 @@ int ne_reloc_parse(const uint8_t        *buf,
      * Allocate one NESegRelocTable slot per segment.  ctx->count tracks how
      * many slots are actually populated.
      */
-    ctx->tables = (NESegRelocTable *)calloc(parser->header.segment_count,
+    ctx->tables = (NESegRelocTable *)NE_CALLOC(parser->header.segment_count,
                                             sizeof(NESegRelocTable));
     if (!ctx->tables)
         return NE_RELOC_ERR_ALLOC;
@@ -95,7 +95,7 @@ int ne_reloc_parse(const uint8_t        *buf,
         tbl = &ctx->tables[ctx->count];
         tbl->seg_idx = i;
         tbl->count   = count;
-        tbl->records = (NERelocRecord *)calloc(count, sizeof(NERelocRecord));
+        tbl->records = (NERelocRecord *)NE_CALLOC(count, sizeof(NERelocRecord));
         if (!tbl->records) {
             ne_reloc_free(ctx);
             return NE_RELOC_ERR_ALLOC;
@@ -336,8 +336,8 @@ void ne_reloc_free(NERelocContext *ctx)
 
     if (ctx->tables) {
         for (i = 0; i < ctx->count; i++)
-            free(ctx->tables[i].records);
-        free(ctx->tables);
+            NE_FREE(ctx->tables[i].records);
+        NE_FREE(ctx->tables);
     }
 
     memset(ctx, 0, sizeof(*ctx));

@@ -18,8 +18,8 @@
  */
 
 #include "ne_task.h"
+#include "ne_dosalloc.h"
 
-#include <stdlib.h>
 #include <string.h>
 
 #ifdef __WATCOMC__
@@ -77,7 +77,7 @@ static void release_task_slot(NETaskDescriptor *t)
     if (!t)
         return;
     if (t->stack_base) {
-        free(t->stack_base);
+        NE_FREE(t->stack_base);
         t->stack_base = NULL;
     }
     memset(t, 0, sizeof(*t));
@@ -315,7 +315,7 @@ int ne_task_table_init(NETaskTable *tbl, uint16_t capacity)
 
     memset(tbl, 0, sizeof(*tbl));
 
-    tbl->tasks = (NETaskDescriptor *)calloc(capacity,
+    tbl->tasks = (NETaskDescriptor *)NE_CALLOC(capacity,
                                             sizeof(NETaskDescriptor));
     if (!tbl->tasks)
         return NE_TASK_ERR_ALLOC;
@@ -340,7 +340,7 @@ void ne_task_table_free(NETaskTable *tbl)
             if (tbl->tasks[i].handle != NE_TASK_HANDLE_INVALID)
                 release_task_slot(&tbl->tasks[i]);
         }
-        free(tbl->tasks);
+        NE_FREE(tbl->tasks);
     }
 
     memset(tbl, 0, sizeof(*tbl));
@@ -377,7 +377,7 @@ int ne_task_create(NETaskTable  *tbl,
         stack_size = NE_TASK_DEFAULT_STACK;
 
     /* Allocate the task stack. */
-    slot->stack_base = (uint8_t *)malloc((size_t)stack_size);
+    slot->stack_base = (uint8_t *)NE_MALLOC((size_t)stack_size);
     if (!slot->stack_base)
         return NE_TASK_ERR_ALLOC;
 
@@ -392,7 +392,7 @@ int ne_task_create(NETaskTable  *tbl,
     /* Set up the initial execution context. */
     rc = ne_task_context_init(tbl, slot);
     if (rc != NE_TASK_OK) {
-        free(slot->stack_base);
+        NE_FREE(slot->stack_base);
         slot->stack_base = NULL;
         return rc;
     }

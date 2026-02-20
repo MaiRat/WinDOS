@@ -8,8 +8,8 @@
  */
 
 #include "ne_impexp.h"
+#include "ne_dosalloc.h"
 
-#include <stdlib.h>
 #include <string.h>
 
 /* -------------------------------------------------------------------------
@@ -248,7 +248,7 @@ int ne_export_build(const uint8_t        *buf,
     if (entry_count == 0u)
         return NE_IMPEXP_OK;
 
-    tbl->entries = (NEExportEntry *)calloc(entry_count, sizeof(NEExportEntry));
+    tbl->entries = (NEExportEntry *)NE_CALLOC(entry_count, sizeof(NEExportEntry));
     if (!tbl->entries)
         return NE_IMPEXP_ERR_ALLOC;
 
@@ -293,7 +293,7 @@ void ne_export_free(NEExportTable *tbl)
 {
     if (!tbl)
         return;
-    free(tbl->entries);
+    NE_FREE(tbl->entries);
     memset(tbl, 0, sizeof(*tbl));
 }
 
@@ -400,7 +400,7 @@ int ne_stub_table_init(NEStubTable *tbl, uint16_t capacity)
 
     memset(tbl, 0, sizeof(*tbl));
 
-    tbl->entries = (NEStubEntry *)calloc(capacity, sizeof(NEStubEntry));
+    tbl->entries = (NEStubEntry *)NE_CALLOC(capacity, sizeof(NEStubEntry));
     if (!tbl->entries)
         return NE_IMPEXP_ERR_ALLOC;
 
@@ -417,7 +417,7 @@ void ne_stub_table_free(NEStubTable *tbl)
 {
     if (!tbl)
         return;
-    free(tbl->entries);
+    NE_FREE(tbl->entries);
     memset(tbl, 0, sizeof(*tbl));
 }
 

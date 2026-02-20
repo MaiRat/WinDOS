@@ -6,8 +6,8 @@
  */
 
 #include "ne_parser.h"
+#include "ne_dosalloc.h"
 
-#include <stdlib.h>
 #include <string.h>
 
 /* -------------------------------------------------------------------------
@@ -113,7 +113,7 @@ static uint8_t *dup_region(const uint8_t *buf, size_t buf_len,
         return NULL;
     if ((uint32_t)offset + size > buf_len)
         return NULL;
-    p = (uint8_t *)malloc(size);
+    p = (uint8_t *)NE_MALLOC(size);
     if (p)
         memcpy(p, buf + offset, size);
     return p;
@@ -180,7 +180,7 @@ int ne_parse_buffer(const uint8_t *buf, size_t len, NEParserContext *ctx)
 
     /* ---- Parse segment table ---- */
     if (ctx->header.segment_count > 0) {
-        ctx->segments = (NESegmentDescriptor *)calloc(
+        ctx->segments = (NESegmentDescriptor *)NE_CALLOC(
                             ctx->header.segment_count,
                             sizeof(NESegmentDescriptor));
         if (!ctx->segments) {
@@ -287,21 +287,21 @@ int ne_parse_file(const char *path, NEParserContext *ctx)
 
     rewind(fp);
 
-    buf = (uint8_t *)malloc((size_t)file_len);
+    buf = (uint8_t *)NE_MALLOC((size_t)file_len);
     if (!buf) {
         fclose(fp);
         return NE_ERR_ALLOC;
     }
 
     if (fread(buf, 1, (size_t)file_len, fp) != (size_t)file_len) {
-        free(buf);
+        NE_FREE(buf);
         fclose(fp);
         return NE_ERR_IO;
     }
     fclose(fp);
 
     ret = ne_parse_buffer(buf, (size_t)file_len, ctx);
-    free(buf);
+    NE_FREE(buf);
     return ret;
 }
 
@@ -313,10 +313,10 @@ void ne_free(NEParserContext *ctx)
 {
     if (!ctx)
         return;
-    free(ctx->segments);
-    free(ctx->resource_data);
-    free(ctx->entry_data);
-    free(ctx->imported_names);
+    NE_FREE(ctx->segments);
+    NE_FREE(ctx->resource_data);
+    NE_FREE(ctx->entry_data);
+    NE_FREE(ctx->imported_names);
     memset(ctx, 0, sizeof(*ctx));
 }
 

@@ -10,98 +10,9 @@
  */
 
 #include "ne_mem.h"
+#include "ne_dosalloc.h"
 
-#include <stdlib.h>
 #include <string.h>
-
-#ifdef __WATCOMC__
-#include <dos.h>
-#include <i86.h>
-
-/*
- * DOS INT 21h memory allocation wrappers.
- *
- * AH=48h – Allocate memory: BX = paragraphs, returns segment in AX.
- * AH=49h – Free memory:     ES = segment to free.
- * AH=4Ah – Resize memory:   ES = segment, BX = new paragraphs.
- *
- * These functions use far pointers (segment:0000) to return the
- * allocated block base address.  Callers must treat the returned
- * pointer as a far pointer to the start of the memory block.
- */
-
-/* Convert byte count to paragraph count (16-byte units), rounding up. */
-static uint16_t bytes_to_paras(uint32_t bytes)
-{
-    return (uint16_t)((bytes + 15u) >> 4);
-}
-
-/*
- * dos_alloc - allocate conventional memory via INT 21h / AH=48h.
- * Returns a far pointer to the block or NULL on failure.
- */
-static void __far *dos_alloc(uint32_t size)
-{
-    union REGS  r;
-    struct SREGS sr;
-
-    if (size == 0)
-        return NULL;
-
-    r.h.ah = 0x48;
-    r.x.bx = bytes_to_paras(size);
-    intdosx(&r, &r, &sr);
-
-    if (r.x.cflag)
-        return NULL;
-
-    return MK_FP(r.x.ax, 0);
-}
-
-/*
- * dos_free - release conventional memory via INT 21h / AH=49h.
- */
-static void dos_free(void __far *ptr)
-{
-    union REGS   r;
-    struct SREGS sr;
-
-    if (ptr == NULL)
-        return;
-
-    segread(&sr);
-    sr.es  = FP_SEG(ptr);
-    r.h.ah = 0x49;
-    intdosx(&r, &r, &sr);
-}
-
-/*
- * dos_calloc - allocate and zero-fill via dos_alloc + _fmemset.
- */
-static void __far *dos_calloc(uint32_t size)
-{
-    void __far *p = dos_alloc(size);
-    if (p)
-        _fmemset(p, 0, (size_t)size);
-    return p;
-}
-
-#endif /* __WATCOMC__ */
-
-/*
- * Portable allocation macros.
- * On the Watcom/DOS target these expand to the DOS INT 21h wrappers above.
- * On the POSIX host they expand to the standard C library calls.
- */
-#ifdef __WATCOMC__
-#define NE_MALLOC(sz)      dos_alloc((uint32_t)(sz))
-#define NE_CALLOC(n, sz)   dos_calloc((uint32_t)(n) * (uint32_t)(sz))
-#define NE_FREE(p)         dos_free(p)
-#else
-#define NE_MALLOC(sz)      malloc((size_t)(sz))
-#define NE_CALLOC(n, sz)   calloc((size_t)(n), (size_t)(sz))
-#define NE_FREE(p)         free(p)
-#endif
 
 /* =========================================================================
  * Internal helpers – GMEM

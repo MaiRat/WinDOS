@@ -7,8 +7,8 @@
  */
 
 #include "ne_module.h"
+#include "ne_dosalloc.h"
 
-#include <stdlib.h>
 #include <string.h>
 
 /* -------------------------------------------------------------------------
@@ -99,7 +99,7 @@ int ne_mod_table_init(NEModuleTable *tbl, uint16_t capacity)
 
     memset(tbl, 0, sizeof(*tbl));
 
-    tbl->entries = (NEModuleEntry *)calloc(capacity, sizeof(NEModuleEntry));
+    tbl->entries = (NEModuleEntry *)NE_CALLOC(capacity, sizeof(NEModuleEntry));
     if (!tbl->entries)
         return NE_MOD_ERR_ALLOC;
 
@@ -126,7 +126,7 @@ void ne_mod_table_free(NEModuleTable *tbl)
             if (tbl->entries[i].handle != NE_MOD_HANDLE_INVALID)
                 release_entry(&tbl->entries[i]);
         }
-        free(tbl->entries);
+        NE_FREE(tbl->entries);
     }
 
     memset(tbl, 0, sizeof(*tbl));

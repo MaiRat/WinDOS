@@ -6,74 +6,9 @@
  */
 
 #include "ne_loader.h"
+#include "ne_dosalloc.h"
 
-#include <stdlib.h>
 #include <string.h>
-
-#ifdef __WATCOMC__
-#include <dos.h>
-#include <i86.h>
-
-/*
- * DOS INT 21h memory allocation wrappers for the loader.
- */
-static uint16_t ld_bytes_to_paras(uint32_t bytes)
-{
-    return (uint16_t)((bytes + 15u) >> 4);
-}
-
-static void __far *ld_dos_alloc(uint32_t size)
-{
-    union REGS   r;
-    struct SREGS sr;
-
-    if (size == 0)
-        return NULL;
-
-    r.h.ah = 0x48;
-    r.x.bx = ld_bytes_to_paras(size);
-    intdosx(&r, &r, &sr);
-
-    if (r.x.cflag)
-        return NULL;
-
-    return MK_FP(r.x.ax, 0);
-}
-
-static void ld_dos_free(void __far *ptr)
-{
-    union REGS   r;
-    struct SREGS sr;
-
-    if (ptr == NULL)
-        return;
-
-    segread(&sr);
-    sr.es  = FP_SEG(ptr);
-    r.h.ah = 0x49;
-    intdosx(&r, &r, &sr);
-}
-
-static void __far *ld_dos_calloc(uint32_t count, uint32_t size)
-{
-    uint32_t total = count * size;
-    void __far *p = ld_dos_alloc(total);
-    if (p)
-        _fmemset(p, 0, (size_t)total);
-    return p;
-}
-
-#define NE_LD_MALLOC(sz)      ld_dos_alloc((uint32_t)(sz))
-#define NE_LD_CALLOC(n, sz)   ld_dos_calloc((uint32_t)(n), (uint32_t)(sz))
-#define NE_LD_FREE(p)         ld_dos_free(p)
-
-#else /* POSIX host */
-
-#define NE_LD_MALLOC(sz)      malloc((size_t)(sz))
-#define NE_LD_CALLOC(n, sz)   calloc((size_t)(n), (size_t)(sz))
-#define NE_LD_FREE(p)         free(p)
-
-#endif /* __WATCOMC__ */
 
 /* -------------------------------------------------------------------------
  * Internal helpers
@@ -110,7 +45,7 @@ int ne_load_buffer(const uint8_t *buf, size_t len,
     if (hdr->segment_count == 0)
         goto validate_entry;
 
-    loader->segments = (NELoadedSegment *)NE_LD_CALLOC(hdr->segment_count,
+    loader->segments = (NELoadedSegment *)NE_CALLOC(hdr->segment_count,
                                                  sizeof(NELoadedSegment));
     if (!loader->segments)
         return NE_LOAD_ERR_NOMEM;
@@ -142,7 +77,7 @@ int ne_load_buffer(const uint8_t *buf, size_t len,
         ls->data_size  = 0;
 
         /* Allocate and zero-fill the segment buffer */
-        ls->data = (uint8_t *)NE_LD_CALLOC(1, alloc_sz);
+        ls->data = (uint8_t *)NE_CALLOC(1, alloc_sz);
         if (!ls->data) {
             ne_loader_free(loader);
             return NE_LOAD_ERR_NOMEM;
@@ -213,21 +148,21 @@ int ne_load_file(const char *path,
 
     rewind(fp);
 
-    buf = (uint8_t *)NE_LD_MALLOC((size_t)file_len);
+    buf = (uint8_t *)NE_MALLOC((size_t)file_len);
     if (!buf) {
         fclose(fp);
         return NE_LOAD_ERR_NOMEM;
     }
 
     if (fread(buf, 1, (size_t)file_len, fp) != (size_t)file_len) {
-        NE_LD_FREE(buf);
+        NE_FREE(buf);
         fclose(fp);
         return NE_LOAD_ERR_IO;
     }
     fclose(fp);
 
     ret = ne_load_buffer(buf, (size_t)file_len, parser, loader);
-    NE_LD_FREE(buf);
+    NE_FREE(buf);
     return ret;
 }
 
@@ -244,8 +179,8 @@ void ne_loader_free(NELoaderContext *loader)
 
     if (loader->segments) {
         for (i = 0; i < loader->count; i++)
-            NE_LD_FREE(loader->segments[i].data);
-        NE_LD_FREE(loader->segments);
+            NE_FREE(loader->segments[i].data);
+        NE_FREE(loader->segments);
     }
 
     memset(loader, 0, sizeof(*loader));
