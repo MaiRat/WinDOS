@@ -1533,6 +1533,432 @@ static void test_phase_a_null_ctx(void)
     TEST_PASS();
 }
 
+/* =========================================================================
+ * Phase B: INI File and Profile API tests
+ * ===================================================================== */
+
+#define PHASE_B_TEST_INI  "PHASE_B_TEST.INI"
+#define PHASE_B_TEST_INI2 "PHASE_B_TEST2.INI"
+
+/* Helper: create a test INI file with known content */
+static void create_test_ini(const char *path, const char *content)
+{
+    FILE *fp = fopen(path, "w");
+    if (fp) {
+        fputs(content, fp);
+        fclose(fp);
+    }
+}
+
+/* Helper: remove test INI file */
+static void remove_test_ini(const char *path)
+{
+    remove(path);
+}
+
+static void test_get_private_profile_string_basic(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    char            buf[64];
+    int             len;
+
+    TEST_BEGIN("GetPrivateProfileString: basic read");
+
+    create_test_ini(PHASE_B_TEST_INI,
+        "[Settings]\n"
+        "Color=Blue\n"
+        "Size=42\n"
+        "[Other]\n"
+        "Name=Test\n");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    len = ne_kernel_get_private_profile_string(
+        &ctx, "Settings", "Color", "Red",
+        buf, sizeof(buf), PHASE_B_TEST_INI);
+    ASSERT_STR_EQ(buf, "Blue");
+    ASSERT_EQ(len, 4);
+
+    len = ne_kernel_get_private_profile_string(
+        &ctx, "Other", "Name", "",
+        buf, sizeof(buf), PHASE_B_TEST_INI);
+    ASSERT_STR_EQ(buf, "Test");
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    remove_test_ini(PHASE_B_TEST_INI);
+    TEST_PASS();
+}
+
+static void test_get_private_profile_string_default(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    char            buf[64];
+    int             len;
+
+    TEST_BEGIN("GetPrivateProfileString: default on missing key");
+
+    create_test_ini(PHASE_B_TEST_INI,
+        "[Settings]\n"
+        "Color=Blue\n");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    len = ne_kernel_get_private_profile_string(
+        &ctx, "Settings", "Missing", "DefaultVal",
+        buf, sizeof(buf), PHASE_B_TEST_INI);
+    ASSERT_STR_EQ(buf, "DefaultVal");
+    ASSERT_EQ(len, 10);
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    remove_test_ini(PHASE_B_TEST_INI);
+    TEST_PASS();
+}
+
+static void test_get_private_profile_string_no_file(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    char            buf[64];
+    int             len;
+
+    TEST_BEGIN("GetPrivateProfileString: default on missing file");
+
+    remove_test_ini("NOEXIST_B.INI");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    len = ne_kernel_get_private_profile_string(
+        &ctx, "Sec", "Key", "Fallback",
+        buf, sizeof(buf), "NOEXIST_B.INI");
+    ASSERT_STR_EQ(buf, "Fallback");
+    ASSERT_EQ(len, 8);
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_get_private_profile_int_basic(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    uint16_t        val;
+
+    TEST_BEGIN("GetPrivateProfileInt: basic read");
+
+    create_test_ini(PHASE_B_TEST_INI,
+        "[Numbers]\n"
+        "Count=123\n");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    val = ne_kernel_get_private_profile_int(
+        &ctx, "Numbers", "Count", 0, PHASE_B_TEST_INI);
+    ASSERT_EQ(val, (uint16_t)123u);
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    remove_test_ini(PHASE_B_TEST_INI);
+    TEST_PASS();
+}
+
+static void test_get_private_profile_int_default(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    uint16_t        val;
+
+    TEST_BEGIN("GetPrivateProfileInt: default on missing key");
+
+    create_test_ini(PHASE_B_TEST_INI,
+        "[Numbers]\n"
+        "Count=123\n");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    val = ne_kernel_get_private_profile_int(
+        &ctx, "Numbers", "Missing", 99, PHASE_B_TEST_INI);
+    ASSERT_EQ(val, (uint16_t)99u);
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    remove_test_ini(PHASE_B_TEST_INI);
+    TEST_PASS();
+}
+
+static void test_write_private_profile_string_create(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    char            buf[64];
+    int             rc;
+
+    TEST_BEGIN("WritePrivateProfileString: creates new file");
+
+    remove_test_ini(PHASE_B_TEST_INI2);
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    rc = ne_kernel_write_private_profile_string(
+        &ctx, "App", "Key1", "Value1", PHASE_B_TEST_INI2);
+    ASSERT_NE(rc, 0);
+
+    /* Read it back */
+    ne_kernel_get_private_profile_string(
+        &ctx, "App", "Key1", "",
+        buf, sizeof(buf), PHASE_B_TEST_INI2);
+    ASSERT_STR_EQ(buf, "Value1");
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    remove_test_ini(PHASE_B_TEST_INI2);
+    TEST_PASS();
+}
+
+static void test_write_private_profile_string_update(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    char            buf[64];
+
+    TEST_BEGIN("WritePrivateProfileString: update existing key");
+
+    create_test_ini(PHASE_B_TEST_INI,
+        "[App]\n"
+        "Key1=OldValue\n");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    ne_kernel_write_private_profile_string(
+        &ctx, "App", "Key1", "NewValue", PHASE_B_TEST_INI);
+
+    ne_kernel_get_private_profile_string(
+        &ctx, "App", "Key1", "",
+        buf, sizeof(buf), PHASE_B_TEST_INI);
+    ASSERT_STR_EQ(buf, "NewValue");
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    remove_test_ini(PHASE_B_TEST_INI);
+    TEST_PASS();
+}
+
+static void test_write_private_profile_string_delete_key(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    char            buf[64];
+
+    TEST_BEGIN("WritePrivateProfileString: delete key (NULL value)");
+
+    create_test_ini(PHASE_B_TEST_INI,
+        "[App]\n"
+        "Keep=yes\n"
+        "Delete=me\n");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    ne_kernel_write_private_profile_string(
+        &ctx, "App", "Delete", NULL, PHASE_B_TEST_INI);
+
+    /* Deleted key should return default */
+    ne_kernel_get_private_profile_string(
+        &ctx, "App", "Delete", "gone",
+        buf, sizeof(buf), PHASE_B_TEST_INI);
+    ASSERT_STR_EQ(buf, "gone");
+
+    /* Other key should still exist */
+    ne_kernel_get_private_profile_string(
+        &ctx, "App", "Keep", "",
+        buf, sizeof(buf), PHASE_B_TEST_INI);
+    ASSERT_STR_EQ(buf, "yes");
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    remove_test_ini(PHASE_B_TEST_INI);
+    TEST_PASS();
+}
+
+static void test_write_private_profile_string_delete_section(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    char            buf[64];
+
+    TEST_BEGIN("WritePrivateProfileString: delete section (NULL key)");
+
+    create_test_ini(PHASE_B_TEST_INI,
+        "[Keep]\n"
+        "A=1\n"
+        "[Remove]\n"
+        "B=2\n"
+        "C=3\n");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    ne_kernel_write_private_profile_string(
+        &ctx, "Remove", NULL, NULL, PHASE_B_TEST_INI);
+
+    /* Removed section key should return default */
+    ne_kernel_get_private_profile_string(
+        &ctx, "Remove", "B", "def",
+        buf, sizeof(buf), PHASE_B_TEST_INI);
+    ASSERT_STR_EQ(buf, "def");
+
+    /* Kept section should survive */
+    ne_kernel_get_private_profile_string(
+        &ctx, "Keep", "A", "",
+        buf, sizeof(buf), PHASE_B_TEST_INI);
+    ASSERT_STR_EQ(buf, "1");
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    remove_test_ini(PHASE_B_TEST_INI);
+    TEST_PASS();
+}
+
+static void test_get_profile_string_default(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    char            buf[64];
+    int             len;
+
+    TEST_BEGIN("GetProfileString: returns default (WIN.INI)");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    len = ne_kernel_get_profile_string(
+        &ctx, "windows", "NullPort", "None",
+        buf, sizeof(buf));
+    ASSERT_STR_EQ(buf, "None");
+    ASSERT_EQ(len, 4);
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_get_profile_int_default(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    uint16_t        val;
+
+    TEST_BEGIN("GetProfileInt: returns default (WIN.INI)");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    val = ne_kernel_get_profile_int(
+        &ctx, "windows", "BorderWidth", 5);
+    ASSERT_EQ(val, (uint16_t)5u);
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_write_profile_string(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+
+    TEST_BEGIN("WriteProfileString: does not crash");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    /* May fail since WIN.INI path may not exist; just test
+       it doesn't crash */
+    (void)ne_kernel_write_profile_string(
+        &ctx, "TestSec", "TestKey", "TestVal");
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_ini_case_insensitive(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    char            buf[64];
+
+    TEST_BEGIN("INI: case-insensitive section and key lookup");
+
+    create_test_ini(PHASE_B_TEST_INI,
+        "[MySection]\n"
+        "MyKey=MyValue\n");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    ne_kernel_get_private_profile_string(
+        &ctx, "MYSECTION", "MYKEY", "fail",
+        buf, sizeof(buf), PHASE_B_TEST_INI);
+    ASSERT_STR_EQ(buf, "MyValue");
+
+    ne_kernel_get_private_profile_string(
+        &ctx, "mysection", "mykey", "fail",
+        buf, sizeof(buf), PHASE_B_TEST_INI);
+    ASSERT_STR_EQ(buf, "MyValue");
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    remove_test_ini(PHASE_B_TEST_INI);
+    TEST_PASS();
+}
+
+static void test_ini_null_ctx(void)
+{
+    char buf[32];
+
+    TEST_BEGIN("INI APIs: NULL ctx return defaults/errors");
+
+    ASSERT_EQ(ne_kernel_get_private_profile_string(
+        NULL, "s", "k", "d", buf, sizeof(buf), "f"), 0);
+    ASSERT_EQ(ne_kernel_get_private_profile_int(
+        NULL, "s", "k", 7, "f"), (uint16_t)7u);
+    ASSERT_EQ(ne_kernel_write_private_profile_string(
+        NULL, "s", "k", "v", "f"), 0);
+    ASSERT_EQ(ne_kernel_get_profile_string(
+        NULL, "s", "k", "d", buf, sizeof(buf)), 0);
+    ASSERT_EQ(ne_kernel_get_profile_int(
+        NULL, "s", "k", 3), (uint16_t)3u);
+    ASSERT_EQ(ne_kernel_write_profile_string(
+        NULL, "s", "k", "v"), 0);
+
+    TEST_PASS();
+}
+
 int main(void)
 {
     printf("=== WinDOS KERNEL.EXE API Stub Tests (Phase 2) ===\n\n");
@@ -1632,6 +2058,23 @@ int main(void)
     test_get_num_tasks();
     test_set_driver();
     test_phase_a_null_ctx();
+
+    /* --- Phase B APIs --- */
+    printf("\n--- Phase B APIs ---\n");
+    test_get_private_profile_string_basic();
+    test_get_private_profile_string_default();
+    test_get_private_profile_string_no_file();
+    test_get_private_profile_int_basic();
+    test_get_private_profile_int_default();
+    test_write_private_profile_string_create();
+    test_write_private_profile_string_update();
+    test_write_private_profile_string_delete_key();
+    test_write_private_profile_string_delete_section();
+    test_get_profile_string_default();
+    test_get_profile_int_default();
+    test_write_profile_string();
+    test_ini_case_insensitive();
+    test_ini_null_ctx();
 
     printf("\n=== Results: %d/%d passed",
            g_tests_passed, g_tests_run);

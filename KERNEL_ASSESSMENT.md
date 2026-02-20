@@ -250,11 +250,11 @@ These APIs are required by nearly every Windows 3.1 application.
 
 Required by most Windows 3.1 applications for configuration.
 
-- [ ] Implement `GetProfileString` / `GetProfileInt`
-- [ ] Implement `WriteProfileString`
-- [ ] Implement `GetPrivateProfileString` / `GetPrivateProfileInt`
-- [ ] Implement `WritePrivateProfileString`
-- [ ] Handle WIN.INI and application-specific INI file paths
+- [x] Implement `GetProfileString` / `GetProfileInt`
+- [x] Implement `WriteProfileString`
+- [x] Implement `GetPrivateProfileString` / `GetPrivateProfileInt`
+- [x] Implement `WritePrivateProfileString`
+- [x] Handle WIN.INI and application-specific INI file paths
 
 ### Phase C – Extended Memory APIs
 
