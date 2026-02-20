@@ -2,6 +2,23 @@
 
 All notable changes to WinDOS are documented in this file.
 
+## [Unreleased] – Phase B: INI File and Profile APIs
+
+### Added
+
+- **Phase B INI File APIs** (`ne_kernel`): 6 new profile/INI file API
+  implementations covering the Windows 3.1 INI configuration APIs:
+  - `GetProfileString` / `GetProfileInt` – read from WIN.INI
+  - `WriteProfileString` – write to WIN.INI
+  - `GetPrivateProfileString` / `GetPrivateProfileInt` – read from
+    application-specific INI files
+  - `WritePrivateProfileString` – write to application-specific INI files
+  - Case-insensitive section and key lookup
+  - Full WIN.INI path handling (`C:\WINDOWS\WIN.INI`)
+  - Support for key deletion (value=NULL) and section deletion (key=NULL)
+
+- **14 new unit tests** for all Phase B APIs.
+
 ## [Unreleased] – Phase A: Critical KERNEL.EXE API Expansion
 
 ### Added

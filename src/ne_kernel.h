@@ -123,6 +123,21 @@
 #define NE_KERNEL_ORD_WIN_EXEC           166
 #define NE_KERNEL_ORD_IS_TASK            320
 
+/* Phase B – INI file / profile API ordinals (Windows 3.1) */
+#define NE_KERNEL_ORD_GET_PROFILE_INT           57
+#define NE_KERNEL_ORD_GET_PROFILE_STRING        58
+#define NE_KERNEL_ORD_WRITE_PROFILE_STRING      59
+#define NE_KERNEL_ORD_GET_PRIVATE_PROFILE_INT  127
+#define NE_KERNEL_ORD_GET_PRIVATE_PROFILE_STRING 128
+#define NE_KERNEL_ORD_WRITE_PRIVATE_PROFILE_STRING 129
+
+/* -------------------------------------------------------------------------
+ * INI file constants
+ * ---------------------------------------------------------------------- */
+#define NE_KERNEL_INI_PATH_MAX  260u    /* max INI file path length */
+#define NE_KERNEL_INI_LINE_MAX  512u    /* max INI file line length */
+#define NE_KERNEL_INI_VALUE_MAX 256u    /* max INI value length     */
+
 /* -------------------------------------------------------------------------
  * GetWinFlags constants
  * ---------------------------------------------------------------------- */
@@ -721,5 +736,86 @@ int ne_kernel_is_task(NEKernelContext *ctx, uint16_t hTask);
  * ne_kernel_get_num_tasks - return the number of active tasks.
  */
 uint16_t ne_kernel_get_num_tasks(NEKernelContext *ctx);
+
+/* =========================================================================
+ * Public API – Phase B: INI File and Profile APIs
+ * ===================================================================== */
+
+/*
+ * ne_kernel_get_profile_string - read a string from WIN.INI.
+ *
+ * Reads value for 'key' under '[section]'.  If not found, copies
+ * 'def' into 'buf'.  Returns the number of characters copied
+ * (excluding NUL).
+ */
+int ne_kernel_get_profile_string(NEKernelContext *ctx,
+                                  const char *section,
+                                  const char *key,
+                                  const char *def,
+                                  char *buf, int buf_size);
+
+/*
+ * ne_kernel_get_profile_int - read an integer from WIN.INI.
+ *
+ * Returns the integer value for 'key' under '[section]', or 'def'
+ * if not found or not a valid integer.
+ */
+uint16_t ne_kernel_get_profile_int(NEKernelContext *ctx,
+                                    const char *section,
+                                    const char *key,
+                                    int def);
+
+/*
+ * ne_kernel_write_profile_string - write a string to WIN.INI.
+ *
+ * Sets 'key' = 'value' under '[section]'.  If 'value' is NULL,
+ * deletes the key.  If 'key' is NULL, deletes the entire section.
+ *
+ * Returns non-zero on success, 0 on failure.
+ */
+int ne_kernel_write_profile_string(NEKernelContext *ctx,
+                                    const char *section,
+                                    const char *key,
+                                    const char *value);
+
+/*
+ * ne_kernel_get_private_profile_string - read a string from a
+ * specified INI file.
+ *
+ * Same semantics as ne_kernel_get_profile_string but operates on
+ * the file specified by 'filename'.
+ */
+int ne_kernel_get_private_profile_string(NEKernelContext *ctx,
+                                          const char *section,
+                                          const char *key,
+                                          const char *def,
+                                          char *buf, int buf_size,
+                                          const char *filename);
+
+/*
+ * ne_kernel_get_private_profile_int - read an integer from a
+ * specified INI file.
+ *
+ * Returns the integer value for 'key' under '[section]', or 'def'
+ * if not found.
+ */
+uint16_t ne_kernel_get_private_profile_int(NEKernelContext *ctx,
+                                            const char *section,
+                                            const char *key,
+                                            int def,
+                                            const char *filename);
+
+/*
+ * ne_kernel_write_private_profile_string - write a string to a
+ * specified INI file.
+ *
+ * Same semantics as ne_kernel_write_profile_string but operates on
+ * the file specified by 'filename'.
+ */
+int ne_kernel_write_private_profile_string(NEKernelContext *ctx,
+                                            const char *section,
+                                            const char *key,
+                                            const char *value,
+                                            const char *filename);
 
 #endif /* NE_KERNEL_H */

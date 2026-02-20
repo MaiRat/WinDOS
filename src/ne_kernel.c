@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <setjmp.h>
+#include <ctype.h>
 
 #ifdef __WATCOMC__
 #include <io.h>
@@ -102,6 +103,14 @@ static const NEKernelExportInfo g_catalog[] = {
     { NE_KERNEL_ORD_GET_LAST_ERROR,      "GetLastError",        NE_KERNEL_CLASS_CRITICAL  },
     { NE_KERNEL_ORD_IS_TASK,             "IsTask",              NE_KERNEL_CLASS_CRITICAL  },
     { NE_KERNEL_ORD_GET_NUM_TASKS,       "GetNumTasks",         NE_KERNEL_CLASS_CRITICAL  },
+
+    /* Phase B – INI file / profile APIs */
+    { NE_KERNEL_ORD_GET_PROFILE_INT,            "GetProfileInt",            NE_KERNEL_CLASS_CRITICAL  },
+    { NE_KERNEL_ORD_GET_PROFILE_STRING,         "GetProfileString",         NE_KERNEL_CLASS_CRITICAL  },
+    { NE_KERNEL_ORD_WRITE_PROFILE_STRING,       "WriteProfileString",       NE_KERNEL_CLASS_CRITICAL  },
+    { NE_KERNEL_ORD_GET_PRIVATE_PROFILE_INT,    "GetPrivateProfileInt",     NE_KERNEL_CLASS_CRITICAL  },
+    { NE_KERNEL_ORD_GET_PRIVATE_PROFILE_STRING, "GetPrivateProfileString",  NE_KERNEL_CLASS_CRITICAL  },
+    { NE_KERNEL_ORD_WRITE_PRIVATE_PROFILE_STRING, "WritePrivateProfileString", NE_KERNEL_CLASS_CRITICAL },
 };
 
 #define CATALOG_COUNT \
@@ -934,4 +943,392 @@ uint16_t ne_kernel_get_num_tasks(NEKernelContext *ctx)
         return 0;
 
     return ctx->tasks->count;
+}
+
+/* =========================================================================
+ * Phase B: INI File and Profile APIs
+ * ===================================================================== */
+
+/* Case-insensitive string comparison */
+static int str_casecmp(const char *a, const char *b)
+{
+    while (*a && *b) {
+        int ca = tolower((unsigned char)*a);
+        int cb = tolower((unsigned char)*b);
+        if (ca != cb)
+            return ca - cb;
+        a++;
+        b++;
+    }
+    return tolower((unsigned char)*a) -
+           tolower((unsigned char)*b);
+}
+
+/* Return the default WIN.INI path */
+static const char *ini_get_win_ini_path(void)
+{
+    return "C:\\WINDOWS\\WIN.INI";
+}
+
+/* Trim leading whitespace in place and return pointer */
+static char *ini_trim_left(char *s)
+{
+    while (*s && (*s == ' ' || *s == '\t'))
+        s++;
+    return s;
+}
+
+/* Trim trailing whitespace in place */
+static void ini_trim_right(char *s)
+{
+    int len = (int)strlen(s);
+    while (len > 0 &&
+           (s[len - 1] == ' '  || s[len - 1] == '\t' ||
+            s[len - 1] == '\n' || s[len - 1] == '\r')) {
+        s[--len] = '\0';
+    }
+}
+
+/*
+ * ini_read_value - read a value from an INI file.
+ *
+ * Scans for [section], then key=value.  Returns the value string
+ * length copied into 'buf', or -1 if not found.
+ */
+static int ini_read_value(const char *filename,
+                          const char *section,
+                          const char *key,
+                          char *buf, int buf_size)
+{
+    FILE *fp;
+    char  line[NE_KERNEL_INI_LINE_MAX];
+    int   in_section = 0;
+    char *p, *eq;
+    int   len;
+
+    if (!filename || !section || !key || !buf || buf_size <= 0)
+        return -1;
+
+    fp = fopen(filename, "r");
+    if (!fp)
+        return -1;
+
+    while (fgets(line, (int)sizeof(line), fp)) {
+        ini_trim_right(line);
+        p = ini_trim_left(line);
+
+        /* Skip comments and blank lines */
+        if (*p == '\0' || *p == ';' || *p == '#')
+            continue;
+
+        /* Check for section header */
+        if (*p == '[') {
+            char *end = strchr(p, ']');
+            if (end) {
+                *end = '\0';
+                in_section =
+                    (str_casecmp(p + 1, section) == 0);
+            }
+            continue;
+        }
+
+        if (!in_section)
+            continue;
+
+        /* Parse key=value */
+        eq = strchr(p, '=');
+        if (!eq)
+            continue;
+
+        *eq = '\0';
+        {
+            char *k = p;
+            char *v = eq + 1;
+            ini_trim_right(k);
+            v = ini_trim_left(v);
+
+            if (str_casecmp(k, key) == 0) {
+                len = (int)strlen(v);
+                if (len >= buf_size)
+                    len = buf_size - 1;
+                memcpy(buf, v, (size_t)len);
+                buf[len] = '\0';
+                fclose(fp);
+                return len;
+            }
+        }
+    }
+
+    fclose(fp);
+    return -1;
+}
+
+/*
+ * ini_write_value - write/update/delete a key in an INI file.
+ *
+ * Reads the file into a buffer, finds or creates the section,
+ * inserts/updates/deletes the key, and writes the result back.
+ * If value is NULL, deletes the key.  If key is NULL, deletes
+ * the entire section.
+ */
+static int ini_write_value(const char *filename,
+                           const char *section,
+                           const char *key,
+                           const char *value)
+{
+    FILE  *fp;
+    char   line[NE_KERNEL_INI_LINE_MAX];
+    char  *content = NULL;
+    size_t content_cap = 4096;
+    size_t content_len = 0;
+    int    section_found = 0;
+    int    key_written = 0;
+    int    in_target_section = 0;
+    int    skip_section = 0;
+
+    if (!filename || !section)
+        return 0;
+
+    content = (char *)NE_MALLOC(content_cap);
+    if (!content)
+        return 0;
+    content[0] = '\0';
+
+#define APPEND_STR(s) do { \
+    size_t slen = strlen(s); \
+    while (content_len + slen + 1 > content_cap) { \
+        size_t newcap = content_cap * 2; \
+        char *tmp = (char *)NE_MALLOC(newcap); \
+        if (!tmp) { NE_FREE(content); return 0; } \
+        memcpy(tmp, content, content_len + 1); \
+        NE_FREE(content); \
+        content = tmp; \
+        content_cap = newcap; \
+    } \
+    memcpy(content + content_len, (s), slen); \
+    content_len += slen; \
+    content[content_len] = '\0'; \
+} while (0)
+
+    fp = fopen(filename, "r");
+    if (fp) {
+        while (fgets(line, (int)sizeof(line), fp)) {
+            char trimmed[NE_KERNEL_INI_LINE_MAX];
+            char *p;
+
+            strncpy(trimmed, line, sizeof(trimmed) - 1);
+            trimmed[sizeof(trimmed) - 1] = '\0';
+            ini_trim_right(trimmed);
+            p = ini_trim_left(trimmed);
+
+            /* Section header */
+            if (*p == '[') {
+                char *end = strchr(p, ']');
+                if (end) {
+                    char sec_name[NE_KERNEL_INI_LINE_MAX];
+                    size_t nlen = (size_t)(end - p - 1);
+                    if (nlen >= sizeof(sec_name))
+                        nlen = sizeof(sec_name) - 1;
+                    memcpy(sec_name, p + 1, nlen);
+                    sec_name[nlen] = '\0';
+
+                    if (in_target_section && !key_written
+                        && key && value) {
+                        /* Insert key before next section */
+                        APPEND_STR(key);
+                        APPEND_STR("=");
+                        APPEND_STR(value);
+                        APPEND_STR("\n");
+                        key_written = 1;
+                    }
+
+                    in_target_section =
+                        (str_casecmp(sec_name, section) == 0);
+                    if (in_target_section) {
+                        section_found = 1;
+                        if (!key) {
+                            skip_section = 1;
+                            continue;
+                        }
+                    }
+                    skip_section = 0;
+                }
+                if (!skip_section) {
+                    APPEND_STR(line);
+                }
+                continue;
+            }
+
+            if (skip_section)
+                continue;
+
+            /* In target section, handle key match */
+            if (in_target_section && key) {
+                char *eq = strchr(p, '=');
+                if (eq && *p != ';' && *p != '#') {
+                    char kname[NE_KERNEL_INI_LINE_MAX];
+                    size_t klen = (size_t)(eq - p);
+                    if (klen >= sizeof(kname))
+                        klen = sizeof(kname) - 1;
+                    memcpy(kname, p, klen);
+                    kname[klen] = '\0';
+                    ini_trim_right(kname);
+
+                    if (str_casecmp(kname, key) == 0) {
+                        if (value) {
+                            APPEND_STR(key);
+                            APPEND_STR("=");
+                            APPEND_STR(value);
+                            APPEND_STR("\n");
+                        }
+                        /* else: delete key by not writing */
+                        key_written = 1;
+                        continue;
+                    }
+                }
+            }
+
+            APPEND_STR(line);
+        }
+        fclose(fp);
+    }
+
+    /* If we were in the target section at EOF and haven't written */
+    if (in_target_section && !key_written && key && value) {
+        APPEND_STR(key);
+        APPEND_STR("=");
+        APPEND_STR(value);
+        APPEND_STR("\n");
+        key_written = 1;
+    }
+
+    /* Section not found at all - create it */
+    if (!section_found && key && value) {
+        APPEND_STR("[");
+        APPEND_STR(section);
+        APPEND_STR("]\n");
+        APPEND_STR(key);
+        APPEND_STR("=");
+        APPEND_STR(value);
+        APPEND_STR("\n");
+        key_written = 1;
+    }
+
+#undef APPEND_STR
+
+    fp = fopen(filename, "w");
+    if (!fp) {
+        NE_FREE(content);
+        return 0;
+    }
+    if (content_len > 0)
+        fwrite(content, 1, content_len, fp);
+    fclose(fp);
+
+    NE_FREE(content);
+    return 1;
+}
+
+/* --- Public Phase B API implementations --- */
+
+int ne_kernel_get_private_profile_string(NEKernelContext *ctx,
+                                          const char *section,
+                                          const char *key,
+                                          const char *def,
+                                          char *buf, int buf_size,
+                                          const char *filename)
+{
+    int len;
+
+    if (!ctx || !ctx->initialized || !buf || buf_size <= 0)
+        return 0;
+
+    if (!section || !key || !filename) {
+        if (def) {
+            len = (int)strlen(def);
+            if (len >= buf_size) len = buf_size - 1;
+            memcpy(buf, def, (size_t)len);
+            buf[len] = '\0';
+            return len;
+        }
+        buf[0] = '\0';
+        return 0;
+    }
+
+    len = ini_read_value(filename, section, key, buf, buf_size);
+    if (len < 0) {
+        if (def) {
+            len = (int)strlen(def);
+            if (len >= buf_size) len = buf_size - 1;
+            memcpy(buf, def, (size_t)len);
+            buf[len] = '\0';
+            return len;
+        }
+        buf[0] = '\0';
+        return 0;
+    }
+    return len;
+}
+
+uint16_t ne_kernel_get_private_profile_int(NEKernelContext *ctx,
+                                            const char *section,
+                                            const char *key,
+                                            int def,
+                                            const char *filename)
+{
+    char buf[NE_KERNEL_INI_VALUE_MAX];
+    int  len;
+
+    if (!ctx || !ctx->initialized)
+        return (uint16_t)def;
+    if (!section || !key || !filename)
+        return (uint16_t)def;
+
+    len = ini_read_value(filename, section, key,
+                         buf, (int)sizeof(buf));
+    if (len < 0)
+        return (uint16_t)def;
+
+    return (uint16_t)atoi(buf);
+}
+
+int ne_kernel_write_private_profile_string(NEKernelContext *ctx,
+                                            const char *section,
+                                            const char *key,
+                                            const char *value,
+                                            const char *filename)
+{
+    if (!ctx || !ctx->initialized || !section || !filename)
+        return 0;
+
+    return ini_write_value(filename, section, key, value);
+}
+
+int ne_kernel_get_profile_string(NEKernelContext *ctx,
+                                  const char *section,
+                                  const char *key,
+                                  const char *def,
+                                  char *buf, int buf_size)
+{
+    return ne_kernel_get_private_profile_string(
+        ctx, section, key, def, buf, buf_size,
+        ini_get_win_ini_path());
+}
+
+uint16_t ne_kernel_get_profile_int(NEKernelContext *ctx,
+                                    const char *section,
+                                    const char *key,
+                                    int def)
+{
+    return ne_kernel_get_private_profile_int(
+        ctx, section, key, def, ini_get_win_ini_path());
+}
+
+int ne_kernel_write_profile_string(NEKernelContext *ctx,
+                                    const char *section,
+                                    const char *key,
+                                    const char *value)
+{
+    return ne_kernel_write_private_profile_string(
+        ctx, section, key, value, ini_get_win_ini_path());
 }
