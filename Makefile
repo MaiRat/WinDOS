@@ -78,6 +78,9 @@ COMPAT_OBJ     := $(BUILD_DIR)/ne_compat.obj
 RELEASE_SRC    := $(SRC_DIR)/ne_release.c
 RELEASE_OBJ    := $(BUILD_DIR)/ne_release.obj
 
+DPMI_SRC       := $(SRC_DIR)/ne_dpmi.c
+DPMI_OBJ       := $(BUILD_DIR)/ne_dpmi.obj
+
 TEST_SRC         := $(TEST_DIR)/test_ne_parser.c
 TEST_OBJ         := $(BUILD_DIR)/test_ne_parser.obj
 TEST_BIN         := $(BUILD_DIR)/test_ne_parser.exe
@@ -146,9 +149,13 @@ RELEASE_TEST_SRC    := $(TEST_DIR)/test_ne_release.c
 RELEASE_TEST_OBJ    := $(BUILD_DIR)/test_ne_release.obj
 RELEASE_TEST_BIN    := $(BUILD_DIR)/test_ne_release.exe
 
+DPMI_TEST_SRC       := $(TEST_DIR)/test_ne_dpmi.c
+DPMI_TEST_OBJ       := $(BUILD_DIR)/test_ne_dpmi.obj
+DPMI_TEST_BIN       := $(BUILD_DIR)/test_ne_dpmi.exe
+
 .PHONY: all test clean
 
-all: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN) $(INTEGRATE_TEST_BIN) $(FULLINTEG_TEST_BIN) $(KERNEL_TEST_BIN) $(USER_TEST_BIN) $(GDI_TEST_BIN) $(DRIVER_TEST_BIN) $(SEGMGR_TEST_BIN) $(RESOURCE_TEST_BIN) $(COMPAT_TEST_BIN) $(RELEASE_TEST_BIN)
+all: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN) $(INTEGRATE_TEST_BIN) $(FULLINTEG_TEST_BIN) $(KERNEL_TEST_BIN) $(USER_TEST_BIN) $(GDI_TEST_BIN) $(DRIVER_TEST_BIN) $(SEGMGR_TEST_BIN) $(RESOURCE_TEST_BIN) $(COMPAT_TEST_BIN) $(RELEASE_TEST_BIN) $(DPMI_TEST_BIN)
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
@@ -207,6 +214,9 @@ $(COMPAT_OBJ): $(COMPAT_SRC) $(SRC_DIR)/ne_compat.h | $(BUILD_DIR)
 $(RELEASE_OBJ): $(RELEASE_SRC) $(SRC_DIR)/ne_release.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
+$(DPMI_OBJ): $(DPMI_SRC) $(SRC_DIR)/ne_dpmi.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -fo=$@ $<
+
 $(TEST_OBJ): $(TEST_SRC) $(SRC_DIR)/ne_parser.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
@@ -256,6 +266,9 @@ $(COMPAT_TEST_OBJ): $(COMPAT_TEST_SRC) $(SRC_DIR)/ne_compat.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
 $(RELEASE_TEST_OBJ): $(RELEASE_TEST_SRC) $(SRC_DIR)/ne_release.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -fo=$@ $<
+
+$(DPMI_TEST_OBJ): $(DPMI_TEST_SRC) $(SRC_DIR)/ne_dpmi.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
 $(TEST_BIN): $(TEST_OBJ) $(PARSER_OBJ) | $(BUILD_DIR)
@@ -309,7 +322,10 @@ $(COMPAT_TEST_BIN): $(COMPAT_TEST_OBJ) $(COMPAT_OBJ) | $(BUILD_DIR)
 $(RELEASE_TEST_BIN): $(RELEASE_TEST_OBJ) $(RELEASE_OBJ) | $(BUILD_DIR)
 	$(LD) $(LDFLAGS) name $@ file $(RELEASE_TEST_OBJ),$(RELEASE_OBJ)
 
-test: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN) $(INTEGRATE_TEST_BIN) $(FULLINTEG_TEST_BIN) $(KERNEL_TEST_BIN) $(USER_TEST_BIN) $(GDI_TEST_BIN) $(DRIVER_TEST_BIN) $(SEGMGR_TEST_BIN) $(RESOURCE_TEST_BIN) $(COMPAT_TEST_BIN) $(RELEASE_TEST_BIN)
+$(DPMI_TEST_BIN): $(DPMI_TEST_OBJ) $(DPMI_OBJ) | $(BUILD_DIR)
+	$(LD) $(LDFLAGS) name $@ file $(DPMI_TEST_OBJ),$(DPMI_OBJ)
+
+test: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN) $(INTEGRATE_TEST_BIN) $(FULLINTEG_TEST_BIN) $(KERNEL_TEST_BIN) $(USER_TEST_BIN) $(GDI_TEST_BIN) $(DRIVER_TEST_BIN) $(SEGMGR_TEST_BIN) $(RESOURCE_TEST_BIN) $(COMPAT_TEST_BIN) $(RELEASE_TEST_BIN) $(DPMI_TEST_BIN)
 	@echo "--- Running NE parser tests ---"
 	$(TEST_BIN)
 	@echo "--- Running NE loader tests ---"
@@ -344,6 +360,8 @@ test: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPE
 	$(COMPAT_TEST_BIN)
 	@echo "--- Running Release Readiness tests (Phase 7) ---"
 	$(RELEASE_TEST_BIN)
+	@echo "--- Running DPMI Protected-Mode tests (Phase H) ---"
+	$(DPMI_TEST_BIN)
 
 clean:
 	rm -rf $(BUILD_DIR)
@@ -415,6 +433,9 @@ host-test: | $(BUILD_DIR)
 	@echo "--- Release readiness (Phase 7) ---"
 	$(HOST_CC) $(HOST_CFLAGS) $(SRC_DIR)/ne_release.c $(TEST_DIR)/test_ne_release.c -o $(BUILD_DIR)/host_test_release
 	$(BUILD_DIR)/host_test_release
+	@echo "--- DPMI Protected-Mode (Phase H) ---"
+	$(HOST_CC) $(HOST_CFLAGS) $(SRC_DIR)/ne_dpmi.c $(TEST_DIR)/test_ne_dpmi.c -o $(BUILD_DIR)/host_test_dpmi
+	$(BUILD_DIR)/host_test_dpmi
 	@echo "=== All host tests passed ==="
 
 host-clean:
