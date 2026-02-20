@@ -98,7 +98,7 @@ static int g_tests_failed = 0;
  * Test window procedures
  * ---------------------------------------------------------------------- */
 
-static uint32_t test_wndproc(uint16_t hwnd, uint16_t msg,
+static uint32_t simple_wndproc(uint16_t hwnd, uint16_t msg,
                              uint16_t wParam, uint32_t lParam)
 {
     (void)hwnd; (void)wParam; (void)lParam;
@@ -158,7 +158,7 @@ static void test_register_class(void)
     NEUserContext ctx;
     TEST_BEGIN("register a class, class_count is 1");
     ne_user_init(&ctx);
-    ASSERT_EQ(ne_user_register_class(&ctx, "TestClass", test_wndproc, 0),
+    ASSERT_EQ(ne_user_register_class(&ctx, "TestClass", simple_wndproc, 0),
               NE_USER_OK);
     ASSERT_EQ(ctx.class_count, 1);
     ne_user_free(&ctx);
@@ -170,9 +170,9 @@ static void test_register_class_duplicate(void)
     NEUserContext ctx;
     TEST_BEGIN("duplicate class registration is idempotent");
     ne_user_init(&ctx);
-    ASSERT_EQ(ne_user_register_class(&ctx, "Dup", test_wndproc, 0),
+    ASSERT_EQ(ne_user_register_class(&ctx, "Dup", simple_wndproc, 0),
               NE_USER_OK);
-    ASSERT_EQ(ne_user_register_class(&ctx, "Dup", test_wndproc, 0),
+    ASSERT_EQ(ne_user_register_class(&ctx, "Dup", simple_wndproc, 0),
               NE_USER_OK);
     ASSERT_EQ(ctx.class_count, 1);
     ne_user_free(&ctx);
@@ -184,11 +184,11 @@ static void test_register_class_null_args(void)
     NEUserContext ctx;
     TEST_BEGIN("register_class NULL / empty args return errors");
     ne_user_init(&ctx);
-    ASSERT_EQ(ne_user_register_class(NULL, "X", test_wndproc, 0),
+    ASSERT_EQ(ne_user_register_class(NULL, "X", simple_wndproc, 0),
               NE_USER_ERR_NULL);
-    ASSERT_EQ(ne_user_register_class(&ctx, NULL, test_wndproc, 0),
+    ASSERT_EQ(ne_user_register_class(&ctx, NULL, simple_wndproc, 0),
               NE_USER_ERR_NULL);
-    ASSERT_EQ(ne_user_register_class(&ctx, "", test_wndproc, 0),
+    ASSERT_EQ(ne_user_register_class(&ctx, "", simple_wndproc, 0),
               NE_USER_ERR_NULL);
     ASSERT_EQ(ne_user_register_class(&ctx, "X", NULL, 0),
               NE_USER_ERR_NULL);
@@ -205,10 +205,10 @@ static void test_register_class_full(void)
     ne_user_init(&ctx);
     for (i = 0; i < NE_USER_WNDCLASS_CAP; i++) {
         sprintf(name, "cls%u", (unsigned)i);
-        ASSERT_EQ(ne_user_register_class(&ctx, name, test_wndproc, 0),
+        ASSERT_EQ(ne_user_register_class(&ctx, name, simple_wndproc, 0),
                   NE_USER_OK);
     }
-    ASSERT_EQ(ne_user_register_class(&ctx, "overflow", test_wndproc, 0),
+    ASSERT_EQ(ne_user_register_class(&ctx, "overflow", simple_wndproc, 0),
               NE_USER_ERR_FULL);
     ne_user_free(&ctx);
     TEST_PASS();
@@ -224,7 +224,7 @@ static void test_create_destroy_window(void)
     NEUserHWND hwnd;
     TEST_BEGIN("create window, verify hwnd; destroy, wnd_count=0");
     ne_user_init(&ctx);
-    ne_user_register_class(&ctx, "Win", test_wndproc, 0);
+    ne_user_register_class(&ctx, "Win", simple_wndproc, 0);
     hwnd = ne_user_create_window(&ctx, "Win", NE_USER_HWND_INVALID, 0);
     ASSERT_NE(hwnd, NE_USER_HWND_INVALID);
     ASSERT_EQ(ctx.wnd_count, 1);
@@ -287,7 +287,7 @@ static void test_show_window(void)
     uint16_t i;
     TEST_BEGIN("show_window SW_SHOW / SW_HIDE toggles visible");
     ne_user_init(&ctx);
-    ne_user_register_class(&ctx, "Vis", test_wndproc, 0);
+    ne_user_register_class(&ctx, "Vis", simple_wndproc, 0);
     hwnd = ne_user_create_window(&ctx, "Vis", NE_USER_HWND_INVALID, 0);
     for (i = 0; i < NE_USER_WND_CAP; i++) {
         if (ctx.windows[i].active && ctx.windows[i].hwnd == hwnd) {
@@ -313,7 +313,7 @@ static void test_update_window(void)
     uint16_t i;
     TEST_BEGIN("update_window clears needs_paint");
     ne_user_init(&ctx);
-    ne_user_register_class(&ctx, "Upd", test_wndproc, 0);
+    ne_user_register_class(&ctx, "Upd", simple_wndproc, 0);
     hwnd = ne_user_create_window(&ctx, "Upd", NE_USER_HWND_INVALID, 0);
     ne_user_show_window(&ctx, hwnd, SW_SHOW);
     for (i = 0; i < NE_USER_WND_CAP; i++) {

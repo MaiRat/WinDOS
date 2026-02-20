@@ -111,7 +111,7 @@ static void test_gdi_init_null(void)
 
 static void test_gdi_free_null_safe(void)
 {
-    TEST_BEGIN("free(NULL) doesn't crash");
+    TEST_BEGIN("free(NULL) does not crash");
 
     ne_gdi_free(NULL);
 
