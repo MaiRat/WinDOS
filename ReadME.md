@@ -42,14 +42,14 @@ This roadmap breaks the work into small milestones to implement a full Windows 3
    - [x] Deliverable: correctly relocated module image.
 
 4. **Module table handling**
-   - [ ] Design and implement the global module table data structure.
-   - [ ] Assign and track unique module handles for each loaded NE module.
-   - [ ] Implement reference counting for module load/unload lifecycle.
-   - [ ] Record inter-module dependencies to enforce correct unload ordering.
-   - [ ] Implement duplicate-load detection and return existing handle on re-load.
-   - [ ] Implement module unload path including reference count decrement and memory release.
-   - [ ] Write tests for load, duplicate-load, and unload bookkeeping correctness.
-   - [ ] Deliverable: stable module lifecycle management.
+   - [x] Design and implement the global module table data structure.
+   - [x] Assign and track unique module handles for each loaded NE module.
+   - [x] Implement reference counting for module load/unload lifecycle.
+   - [x] Record inter-module dependencies to enforce correct unload ordering.
+   - [x] Implement duplicate-load detection and return existing handle on re-load.
+   - [x] Implement module unload path including reference count decrement and memory release.
+   - [x] Write tests for load, duplicate-load, and unload bookkeeping correctness.
+   - [x] Deliverable: stable module lifecycle management.
 
 5. **Import/export resolution**
    - [ ] Build per-module export tables indexed by ordinal number.
