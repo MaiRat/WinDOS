@@ -11,9 +11,13 @@
  */
 
 #include "ne_kernel.h"
+#include "ne_driver.h"
 #include "ne_dosalloc.h"
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <setjmp.h>
 
 #ifdef __WATCOMC__
 #include <io.h>
@@ -76,6 +80,28 @@ static const NEKernelExportInfo g_catalog[] = {
     { NE_KERNEL_ORD_GLOBAL_DELETE_ATOM, "GlobalDeleteAtom",    NE_KERNEL_CLASS_SECONDARY },
     { NE_KERNEL_ORD_GLOBAL_FIND_ATOM,   "GlobalFindAtom",      NE_KERNEL_CLASS_SECONDARY },
     { NE_KERNEL_ORD_GLOBAL_GET_ATOM_NAME,"GlobalGetAtomName",  NE_KERNEL_CLASS_SECONDARY },
+
+    /* Phase A – critical KERNEL.EXE APIs */
+    { NE_KERNEL_ORD_GET_VERSION,         "GetVersion",          NE_KERNEL_CLASS_CRITICAL  },
+    { NE_KERNEL_ORD_GET_WIN_FLAGS,       "GetWinFlags",         NE_KERNEL_CLASS_CRITICAL  },
+    { NE_KERNEL_ORD_GET_WINDOWS_DIR,     "GetWindowsDirectory", NE_KERNEL_CLASS_CRITICAL  },
+    { NE_KERNEL_ORD_GET_SYSTEM_DIR,      "GetSystemDirectory",  NE_KERNEL_CLASS_CRITICAL  },
+    { NE_KERNEL_ORD_GET_DOS_ENVIRONMENT, "GetDOSEnvironment",   NE_KERNEL_CLASS_CRITICAL  },
+    { NE_KERNEL_ORD_WIN_EXEC,            "WinExec",             NE_KERNEL_CLASS_CRITICAL  },
+    { NE_KERNEL_ORD_EXIT_WINDOWS,        "ExitWindows",         NE_KERNEL_CLASS_CRITICAL  },
+    { NE_KERNEL_ORD_FATAL_EXIT,          "FatalExit",           NE_KERNEL_CLASS_CRITICAL  },
+    { NE_KERNEL_ORD_FATAL_APP_EXIT,      "FatalAppExit",        NE_KERNEL_CLASS_CRITICAL  },
+    { NE_KERNEL_ORD_GET_TICK_COUNT,      "GetTickCount",        NE_KERNEL_CLASS_CRITICAL  },
+    { NE_KERNEL_ORD_CATCH,               "Catch",               NE_KERNEL_CLASS_CRITICAL  },
+    { NE_KERNEL_ORD_THROW,               "Throw",               NE_KERNEL_CLASS_CRITICAL  },
+    { NE_KERNEL_ORD_MAKE_PROC_INSTANCE,  "MakeProcInstance",    NE_KERNEL_CLASS_CRITICAL  },
+    { NE_KERNEL_ORD_FREE_PROC_INSTANCE,  "FreeProcInstance",    NE_KERNEL_CLASS_CRITICAL  },
+    { NE_KERNEL_ORD_OPEN_FILE,           "OpenFile",            NE_KERNEL_CLASS_CRITICAL  },
+    { NE_KERNEL_ORD_OUTPUT_DEBUG_STRING,  "OutputDebugString",  NE_KERNEL_CLASS_CRITICAL  },
+    { NE_KERNEL_ORD_SET_ERROR_MODE,      "SetErrorMode",        NE_KERNEL_CLASS_CRITICAL  },
+    { NE_KERNEL_ORD_GET_LAST_ERROR,      "GetLastError",        NE_KERNEL_CLASS_CRITICAL  },
+    { NE_KERNEL_ORD_IS_TASK,             "IsTask",              NE_KERNEL_CLASS_CRITICAL  },
+    { NE_KERNEL_ORD_GET_NUM_TASKS,       "GetNumTasks",         NE_KERNEL_CLASS_CRITICAL  },
 };
 
 #define CATALOG_COUNT \
@@ -662,4 +688,250 @@ const char *ne_kernel_strerror(int err)
     case NE_KERNEL_ERR_NOT_FOUND:  return "item not found";
     default:                       return "unknown error";
     }
+}
+
+/* =========================================================================
+ * Phase A: Critical KERNEL.EXE APIs
+ * ===================================================================== */
+
+int ne_kernel_set_driver(NEKernelContext *ctx, void *driver)
+{
+    if (!ctx || !ctx->initialized)
+        return NE_KERNEL_ERR_INIT;
+
+    ctx->driver = driver;
+    return NE_KERNEL_OK;
+}
+
+uint16_t ne_kernel_get_version(NEKernelContext *ctx)
+{
+    if (!ctx || !ctx->initialized)
+        return 0;
+
+    /* Windows 3.10: low byte = major (3), high byte = minor (10) */
+    return 0x0A03u;
+}
+
+uint32_t ne_kernel_get_win_flags(NEKernelContext *ctx)
+{
+    if (!ctx || !ctx->initialized)
+        return 0;
+
+    /* WinDOS runs in real mode on 8086 – no protected-mode flags */
+    return 0;
+}
+
+int ne_kernel_get_windows_directory(NEKernelContext *ctx,
+                                     char *buf, int size)
+{
+    const char *dir = "C:\\WINDOWS";
+    int len;
+
+    if (!ctx || !ctx->initialized || !buf || size <= 0)
+        return 0;
+
+    len = (int)strlen(dir);
+    if (len >= size)
+        len = size - 1;
+    memcpy(buf, dir, (size_t)len);
+    buf[len] = '\0';
+    return len;
+}
+
+int ne_kernel_get_system_directory(NEKernelContext *ctx,
+                                    char *buf, int size)
+{
+    const char *dir = "C:\\WINDOWS\\SYSTEM";
+    int len;
+
+    if (!ctx || !ctx->initialized || !buf || size <= 0)
+        return 0;
+
+    len = (int)strlen(dir);
+    if (len >= size)
+        len = size - 1;
+    memcpy(buf, dir, (size_t)len);
+    buf[len] = '\0';
+    return len;
+}
+
+const char *ne_kernel_get_dos_environment(NEKernelContext *ctx)
+{
+    if (!ctx || !ctx->initialized)
+        return NULL;
+
+    /* Stub: no DOS environment block */
+    return NULL;
+}
+
+uint16_t ne_kernel_win_exec(NEKernelContext *ctx, const char *cmdLine,
+                             uint16_t cmdShow)
+{
+    (void)cmdLine;
+    (void)cmdShow;
+
+    if (!ctx || !ctx->initialized)
+        return 0;
+
+    /* Stub: child process launching is not yet implemented */
+    return 0;
+}
+
+int ne_kernel_exit_windows(NEKernelContext *ctx, uint32_t dwReserved)
+{
+    (void)dwReserved;
+
+    if (!ctx || !ctx->initialized)
+        return 0;
+
+    /* Stub: clean shutdown not yet implemented */
+    return 0;
+}
+
+void ne_kernel_fatal_exit(NEKernelContext *ctx, int code)
+{
+    (void)ctx;
+    exit(code);
+}
+
+void ne_kernel_fatal_app_exit(NEKernelContext *ctx, uint16_t action,
+                               const char *msg)
+{
+    (void)ctx;
+    (void)action;
+
+    if (msg)
+        fprintf(stderr, "FatalAppExit: %s\n", msg);
+    exit(1);
+}
+
+uint32_t ne_kernel_get_tick_count(NEKernelContext *ctx)
+{
+    if (!ctx || !ctx->initialized)
+        return 0;
+
+    if (ctx->driver)
+        return ne_drv_get_tick_count((const NEDrvContext *)ctx->driver);
+
+    return 0;
+}
+
+void ne_kernel_throw(NEKernelContext *ctx, NECatchBuf *buf, int retval)
+{
+    (void)ctx;
+    longjmp(buf->env, retval);
+}
+
+void *ne_kernel_make_proc_instance(NEKernelContext *ctx, void *proc,
+                                    uint16_t hInstance)
+{
+    (void)hInstance;
+
+    if (!ctx || !ctx->initialized)
+        return NULL;
+
+    /* Real mode: no thunk needed, return the pointer as-is */
+    return proc;
+}
+
+void ne_kernel_free_proc_instance(NEKernelContext *ctx, void *proc)
+{
+    (void)ctx;
+    (void)proc;
+    /* No-op in real mode */
+}
+
+int ne_kernel_open_file(NEKernelContext *ctx, const char *path,
+                         NEOfStruct *ofs, uint16_t style)
+{
+    int hFile;
+
+    if (!ctx || !ctx->initialized || !path || !ofs)
+        return NE_KERNEL_HFILE_ERROR;
+
+    memset(ofs, 0, sizeof(*ofs));
+    ofs->cBytes = (uint8_t)sizeof(*ofs);
+
+    /* Copy path into ofstruct */
+    strncpy(ofs->szPathName, path, NE_OFS_MAXPATHNAME - 1u);
+    ofs->szPathName[NE_OFS_MAXPATHNAME - 1u] = '\0';
+
+    /* Handle OF_DELETE */
+    if (style & NE_OF_DELETE) {
+        if (remove(path) == 0) {
+            ofs->nErrCode = 0;
+            return 0;
+        }
+        ofs->nErrCode = 2; /* file not found */
+        return NE_KERNEL_HFILE_ERROR;
+    }
+
+    /* Handle OF_EXIST: just test if file can be opened */
+    if (style & NE_OF_EXIST) {
+        hFile = ne_kernel_lopen(ctx, path, NE_KERNEL_OF_READ);
+        if (hFile != NE_KERNEL_HFILE_ERROR) {
+            ne_kernel_lclose(ctx, hFile);
+            ofs->nErrCode = 0;
+            return 0;
+        }
+        ofs->nErrCode = 2;
+        return NE_KERNEL_HFILE_ERROR;
+    }
+
+    /* Normal open */
+    hFile = ne_kernel_lopen(ctx, path, style & 0x0003u);
+    if (hFile == NE_KERNEL_HFILE_ERROR) {
+        ofs->nErrCode = 2;
+        return NE_KERNEL_HFILE_ERROR;
+    }
+
+    ofs->nErrCode = 0;
+    return hFile;
+}
+
+void ne_kernel_output_debug_string(NEKernelContext *ctx, const char *msg)
+{
+    (void)ctx;
+
+    if (msg)
+        fprintf(stderr, "[DEBUG] %s\n", msg);
+}
+
+uint16_t ne_kernel_set_error_mode(NEKernelContext *ctx, uint16_t mode)
+{
+    uint16_t prev;
+
+    if (!ctx || !ctx->initialized)
+        return 0;
+
+    prev = ctx->error_mode;
+    ctx->error_mode = mode;
+    return prev;
+}
+
+uint16_t ne_kernel_get_last_error(NEKernelContext *ctx)
+{
+    if (!ctx || !ctx->initialized)
+        return 0;
+
+    return ctx->last_error;
+}
+
+int ne_kernel_is_task(NEKernelContext *ctx, uint16_t hTask)
+{
+    if (!ctx || !ctx->initialized || !ctx->tasks)
+        return 0;
+
+    if (ne_task_get(ctx->tasks, hTask) != NULL)
+        return 1;
+
+    return 0;
+}
+
+uint16_t ne_kernel_get_num_tasks(NEKernelContext *ctx)
+{
+    if (!ctx || !ctx->initialized || !ctx->tasks)
+        return 0;
+
+    return ctx->tasks->count;
 }

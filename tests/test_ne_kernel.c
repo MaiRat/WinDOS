@@ -19,11 +19,13 @@
  */
 
 #include "../src/ne_kernel.h"
+#include "../src/ne_driver.h"
 
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <setjmp.h>
 
 /* -------------------------------------------------------------------------
  * Minimal test framework (same macros as the other test files)
@@ -1019,8 +1021,517 @@ static void test_strerror(void)
 }
 
 /* =========================================================================
- * main
+ * Phase A: Critical KERNEL.EXE API tests
  * ===================================================================== */
+
+static void test_get_version(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+
+    TEST_BEGIN("GetVersion returns 0x0A03 (Windows 3.10)");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    ASSERT_EQ(ne_kernel_get_version(&ctx), (uint16_t)0x0A03u);
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_get_version_null_ctx(void)
+{
+    TEST_BEGIN("GetVersion: NULL ctx returns 0");
+    ASSERT_EQ(ne_kernel_get_version(NULL), (uint16_t)0u);
+    TEST_PASS();
+}
+
+static void test_get_win_flags(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+
+    TEST_BEGIN("GetWinFlags returns 0 (real mode 8086)");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    ASSERT_EQ(ne_kernel_get_win_flags(&ctx), (uint32_t)0u);
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_get_windows_directory(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    char            buf[64];
+    int             len;
+
+    TEST_BEGIN("GetWindowsDirectory returns C:\\WINDOWS");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    len = ne_kernel_get_windows_directory(&ctx, buf, sizeof(buf));
+    ASSERT_NE(len, 0);
+    ASSERT_STR_EQ(buf, "C:\\WINDOWS");
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_get_system_directory(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    char            buf[64];
+    int             len;
+
+    TEST_BEGIN("GetSystemDirectory returns C:\\WINDOWS\\SYSTEM");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    len = ne_kernel_get_system_directory(&ctx, buf, sizeof(buf));
+    ASSERT_NE(len, 0);
+    ASSERT_STR_EQ(buf, "C:\\WINDOWS\\SYSTEM");
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_get_dos_environment(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+
+    TEST_BEGIN("GetDOSEnvironment returns NULL (stub)");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    ASSERT_NULL(ne_kernel_get_dos_environment(&ctx));
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_win_exec_stub(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+
+    TEST_BEGIN("WinExec stub returns 0");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    ASSERT_EQ(ne_kernel_win_exec(&ctx, "NOTEPAD.EXE", 1), (uint16_t)0u);
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_exit_windows_stub(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+
+    TEST_BEGIN("ExitWindows stub returns 0");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    ASSERT_EQ(ne_kernel_exit_windows(&ctx, 0), 0);
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_get_tick_count_no_driver(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+
+    TEST_BEGIN("GetTickCount without driver returns 0");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    ASSERT_EQ(ne_kernel_get_tick_count(&ctx), (uint32_t)0u);
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_get_tick_count_with_driver(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    NEDrvContext    drv;
+
+    TEST_BEGIN("GetTickCount with driver delegates correctly");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    ne_drv_init(&drv);
+    ne_drv_tmr_install(&drv);
+    ne_drv_tmr_tick(&drv, 100);
+
+    ne_kernel_set_driver(&ctx, &drv);
+    ASSERT_EQ(ne_kernel_get_tick_count(&ctx), (uint32_t)100u);
+
+    ne_drv_free(&drv);
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_catch_throw(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    NECatchBuf      cbuf;
+    int             val;
+
+    TEST_BEGIN("Catch/Throw: setjmp/longjmp round-trip");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    val = ne_kernel_catch(&ctx, &cbuf);
+    if (val == 0) {
+        /* First return from Catch */
+        ne_kernel_throw(&ctx, &cbuf, 42);
+        /* Safety: should never reach here; throw always jumps */
+        TEST_FAIL("throw did not jump");
+    }
+
+    /* Returned via Throw */
+    ASSERT_EQ(val, 42);
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_make_proc_instance(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    void           *proc;
+    void           *result;
+
+    TEST_BEGIN("MakeProcInstance returns pointer as-is (real mode)");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    proc = (void *)&test_make_proc_instance;
+    result = ne_kernel_make_proc_instance(&ctx, proc, 1u);
+    ASSERT_EQ((long)(uintptr_t)result, (long)(uintptr_t)proc);
+
+    /* FreeProcInstance is a no-op; just verify it doesn't crash */
+    ne_kernel_free_proc_instance(&ctx, result);
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_open_file_exist(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    NEOfStruct      ofs;
+    int             result;
+    FILE           *fp;
+
+    TEST_BEGIN("OpenFile: OF_EXIST on existing file succeeds");
+
+    /* Create a temp file */
+    fp = fopen("OPENTEST.TMP", "wb");
+    if (!fp) TEST_FAIL("cannot create temp file");
+    fwrite("test", 1, 4, fp);
+    fclose(fp);
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    result = ne_kernel_open_file(&ctx, "OPENTEST.TMP", &ofs, NE_OF_EXIST);
+    ASSERT_NE(result, NE_KERNEL_HFILE_ERROR);
+    ASSERT_EQ(ofs.nErrCode, (uint16_t)0u);
+    ASSERT_STR_EQ(ofs.szPathName, "OPENTEST.TMP");
+
+    /* Non-existent file */
+    result = ne_kernel_open_file(&ctx, "NOFILE.XXX", &ofs, NE_OF_EXIST);
+    ASSERT_EQ(result, NE_KERNEL_HFILE_ERROR);
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    remove("OPENTEST.TMP");
+    TEST_PASS();
+}
+
+static void test_open_file_read(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    NEOfStruct      ofs;
+    int             hFile;
+    char            buf[16];
+    FILE           *fp;
+
+    TEST_BEGIN("OpenFile: OF_READ opens file for reading");
+
+    fp = fopen("OPENTEST.TMP", "wb");
+    if (!fp) TEST_FAIL("cannot create temp file");
+    fwrite("hello", 1, 5, fp);
+    fclose(fp);
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    hFile = ne_kernel_open_file(&ctx, "OPENTEST.TMP", &ofs, NE_OF_READ);
+    ASSERT_NE(hFile, NE_KERNEL_HFILE_ERROR);
+
+    memset(buf, 0, sizeof(buf));
+    ASSERT_EQ(ne_kernel_lread(&ctx, hFile, buf, 5), 5);
+    ASSERT_STR_EQ(buf, "hello");
+
+    ne_kernel_lclose(&ctx, hFile);
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    remove("OPENTEST.TMP");
+    TEST_PASS();
+}
+
+static void test_open_file_delete(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    NEOfStruct      ofs;
+    int             result;
+    FILE           *fp;
+
+    TEST_BEGIN("OpenFile: OF_DELETE removes the file");
+
+    fp = fopen("DELTEST.TMP", "wb");
+    if (!fp) TEST_FAIL("cannot create temp file");
+    fwrite("x", 1, 1, fp);
+    fclose(fp);
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    result = ne_kernel_open_file(&ctx, "DELTEST.TMP", &ofs, NE_OF_DELETE);
+    ASSERT_NE(result, NE_KERNEL_HFILE_ERROR);
+
+    /* Verify the file is gone */
+    result = ne_kernel_open_file(&ctx, "DELTEST.TMP", &ofs, NE_OF_EXIST);
+    ASSERT_EQ(result, NE_KERNEL_HFILE_ERROR);
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_output_debug_string(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+
+    TEST_BEGIN("OutputDebugString does not crash");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    ne_kernel_output_debug_string(&ctx, "test debug message");
+    ne_kernel_output_debug_string(&ctx, NULL);
+    ne_kernel_output_debug_string(NULL, "should not crash");
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_set_error_mode(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    uint16_t        prev;
+
+    TEST_BEGIN("SetErrorMode stores and returns previous mode");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    prev = ne_kernel_set_error_mode(&ctx, 1u);
+    ASSERT_EQ(prev, (uint16_t)0u);
+
+    prev = ne_kernel_set_error_mode(&ctx, 2u);
+    ASSERT_EQ(prev, (uint16_t)1u);
+
+    ASSERT_EQ(ctx.error_mode, (uint16_t)2u);
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_get_last_error(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+
+    TEST_BEGIN("GetLastError returns stored error code");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    ASSERT_EQ(ne_kernel_get_last_error(&ctx), (uint16_t)0u);
+
+    ctx.last_error = 42u;
+    ASSERT_EQ(ne_kernel_get_last_error(&ctx), (uint16_t)42u);
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void dummy_task_entry(void *arg) { (void)arg; }
+
+static void test_is_task(void)
+{
+    NEGMemTable      gmem;
+    NELMemHeap       lmem;
+    NETaskTable      tasks;
+    NEModuleTable    modules;
+    NEKernelContext  ctx;
+    NETaskHandle     h;
+
+    TEST_BEGIN("IsTask: returns 1 for valid task, 0 for invalid");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    /* No tasks yet */
+    ASSERT_EQ(ne_kernel_is_task(&ctx, 1u), 0);
+
+    /* Create a task */
+    ne_task_create(ctx.tasks, dummy_task_entry, NULL, 256, 0, &h);
+    ASSERT_EQ(ne_kernel_is_task(&ctx, h), 1);
+
+    /* Invalid handle */
+    ASSERT_EQ(ne_kernel_is_task(&ctx, 999u), 0);
+
+    ne_task_destroy(ctx.tasks, h);
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_get_num_tasks(void)
+{
+    NEGMemTable      gmem;
+    NELMemHeap       lmem;
+    NETaskTable      tasks;
+    NEModuleTable    modules;
+    NEKernelContext  ctx;
+    NETaskHandle     h1, h2;
+
+    TEST_BEGIN("GetNumTasks: returns correct count");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    ASSERT_EQ(ne_kernel_get_num_tasks(&ctx), (uint16_t)0u);
+
+    ne_task_create(ctx.tasks, dummy_task_entry, NULL, 256, 0, &h1);
+    ASSERT_EQ(ne_kernel_get_num_tasks(&ctx), (uint16_t)1u);
+
+    ne_task_create(ctx.tasks, dummy_task_entry, NULL, 256, 0, &h2);
+    ASSERT_EQ(ne_kernel_get_num_tasks(&ctx), (uint16_t)2u);
+
+    ne_task_destroy(ctx.tasks, h1);
+    ASSERT_EQ(ne_kernel_get_num_tasks(&ctx), (uint16_t)1u);
+
+    ne_task_destroy(ctx.tasks, h2);
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_set_driver(void)
+{
+    NEGMemTable     gmem;
+    NELMemHeap      lmem;
+    NETaskTable     tasks;
+    NEModuleTable   modules;
+    NEKernelContext ctx;
+    int             dummy;
+
+    TEST_BEGIN("set_driver attaches and detaches driver");
+
+    setup_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+
+    ASSERT_NULL(ctx.driver);
+    ASSERT_EQ(ne_kernel_set_driver(&ctx, &dummy), NE_KERNEL_OK);
+    ASSERT_NOT_NULL(ctx.driver);
+    ASSERT_EQ(ne_kernel_set_driver(&ctx, NULL), NE_KERNEL_OK);
+    ASSERT_NULL(ctx.driver);
+
+    teardown_kernel(&gmem, &lmem, &tasks, &modules, &ctx);
+    TEST_PASS();
+}
+
+static void test_phase_a_null_ctx(void)
+{
+    char buf[32];
+
+    TEST_BEGIN("Phase A APIs: NULL ctx return errors/zeros");
+
+    ASSERT_EQ(ne_kernel_get_win_flags(NULL), (uint32_t)0u);
+    ASSERT_EQ(ne_kernel_get_windows_directory(NULL, buf, sizeof(buf)), 0);
+    ASSERT_EQ(ne_kernel_get_system_directory(NULL, buf, sizeof(buf)), 0);
+    ASSERT_NULL(ne_kernel_get_dos_environment(NULL));
+    ASSERT_EQ(ne_kernel_win_exec(NULL, "x", 0), (uint16_t)0u);
+    ASSERT_EQ(ne_kernel_exit_windows(NULL, 0), 0);
+    ASSERT_EQ(ne_kernel_get_tick_count(NULL), (uint32_t)0u);
+    ASSERT_NULL(ne_kernel_make_proc_instance(NULL, NULL, 0));
+    ASSERT_EQ(ne_kernel_set_error_mode(NULL, 0), (uint16_t)0u);
+    ASSERT_EQ(ne_kernel_get_last_error(NULL), (uint16_t)0u);
+    ASSERT_EQ(ne_kernel_is_task(NULL, 1u), 0);
+    ASSERT_EQ(ne_kernel_get_num_tasks(NULL), (uint16_t)0u);
+    ASSERT_EQ(ne_kernel_set_driver(NULL, NULL), NE_KERNEL_ERR_INIT);
+
+    TEST_PASS();
+}
 
 int main(void)
 {
@@ -1096,6 +1607,31 @@ int main(void)
     /* --- Error strings --- */
     printf("\n--- Error strings ---\n");
     test_strerror();
+
+    /* --- Phase A APIs --- */
+    printf("\n--- Phase A APIs ---\n");
+    test_get_version();
+    test_get_version_null_ctx();
+    test_get_win_flags();
+    test_get_windows_directory();
+    test_get_system_directory();
+    test_get_dos_environment();
+    test_win_exec_stub();
+    test_exit_windows_stub();
+    test_get_tick_count_no_driver();
+    test_get_tick_count_with_driver();
+    test_catch_throw();
+    test_make_proc_instance();
+    test_open_file_exist();
+    test_open_file_read();
+    test_open_file_delete();
+    test_output_debug_string();
+    test_set_error_mode();
+    test_get_last_error();
+    test_is_task();
+    test_get_num_tasks();
+    test_set_driver();
+    test_phase_a_null_ctx();
 
     printf("\n=== Results: %d/%d passed",
            g_tests_passed, g_tests_run);
