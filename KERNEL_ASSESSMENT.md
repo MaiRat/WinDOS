@@ -1,11 +1,16 @@
-# WinDOS Kernel Replacement Assessment
+# WinDOS krnl386.exe Replacement Assessment
 
 ## Purpose
 
 This document evaluates whether the current WinDOS implementation can
-serve as a full replacement for the Windows 3.1 Kernel, covering all
-required functions, compatibility, and stability aspects.  It catalogs
+serve as a replacement for `krnl386.exe`, covering all required
+functions, compatibility, and stability aspects.  It catalogs
 identified gaps and provides a final actionable roadmap.
+
+> **Scope:** This assessment is focused on `krnl386.exe` replacement
+> only.  USER.EXE, GDI.EXE, and device driver gaps are documented for
+> reference but are not part of the current replacement effort.  All
+> existing code for those subsystems is preserved in-tree.
 
 Tracking issue: **Recheck Kernel Replacement Status and Final Roadmap
 Steps**.
@@ -91,7 +96,10 @@ WinDOS currently implements 23 ordinals.
 - Selector manipulation (`AllocSelector`, `FreeSelector`, `ChangeSelector`)
 - Toolhelp APIs
 
-### 2.2 USER.EXE Subsystem
+### 2.2 USER.EXE Subsystem **[PRESERVED – OUT OF SCOPE]**
+
+> This subsystem is preserved for future replacement work.  The gaps
+> listed below are documented for reference only.
 
 **Implemented:**
 - Window class registration (`RegisterClass`)
@@ -120,7 +128,10 @@ WinDOS currently implements 23 ordinals.
 - Caret APIs (`CreateCaret`, `SetCaretPos`, `ShowCaret`)
 - Input APIs (`GetKeyState`, `GetAsyncKeyState`)
 
-### 2.3 GDI.EXE Subsystem
+### 2.3 GDI.EXE Subsystem **[PRESERVED – OUT OF SCOPE]**
+
+> This subsystem is preserved for future replacement work.  The gaps
+> listed below are documented for reference only.
 
 **Implemented:**
 - Device context management (`GetDC`, `ReleaseDC`, `BeginPaint`,
@@ -140,7 +151,10 @@ WinDOS currently implements 23 ordinals.
 - `CreateBitmap` / `CreateDIBitmap`
 - TrueType font rendering (bitmap fonts only)
 
-### 2.4 Device Drivers
+### 2.4 Device Drivers **[PRESERVED – OUT OF SCOPE]**
+
+> Device drivers are preserved for future replacement work.  The gaps
+> listed below are documented for reference only.
 
 | Driver     | Status                                                    |
 |------------|-----------------------------------------------------------|
@@ -202,7 +216,7 @@ prevents running applications that require protected-mode features.
 
 ## 3 – Assessment
 
-**WinDOS is not yet a full replacement for the Windows 3.1 Kernel.**
+**WinDOS is not yet a full replacement for `krnl386.exe`.**
 
 The NE executable loading pipeline (parsing, loading, relocation, module
 management, import/export resolution) is complete and well-tested.  The
@@ -210,7 +224,8 @@ cooperative multitasking runtime and memory management subsystems provide
 a functional foundation.
 
 However, the API surface coverage is approximately 5% of KERNEL.EXE
-exports, and USER.EXE and GDI.EXE subsystems are at early-stub level.
+exports.  USER.EXE and GDI.EXE subsystems are preserved in-tree but
+are out of scope for the current `krnl386.exe` replacement effort.
 Protected-mode operation is entirely absent, which limits the usable
 application set to real-mode-compatible programs.
 
@@ -267,7 +282,9 @@ Required for correct memory management reporting and compaction.
 - [x] Implement `GetFreeSpace` / `GetFreeSystemResources`
 - [x] Implement `LockSegment` / `UnlockSegment`
 
-### Phase D – USER.EXE Expansion
+### Phase D – USER.EXE Expansion **[PRESERVED – OUT OF SCOPE]**
+
+> USER.EXE replacement is preserved for future work.
 
 Required for dialog-based applications and richer window management.
 
@@ -290,7 +307,9 @@ Required for dialog-based applications and richer window management.
 - [x] Implement menu creation and management APIs (`CreateMenu`,
       `SetMenu`, `AppendMenu`, `GetMenu`)
 
-### Phase E – GDI.EXE Rendering
+### Phase E – GDI.EXE Rendering **[PRESERVED – OUT OF SCOPE]**
+
+> GDI.EXE replacement is preserved for future work.
 
 Required for any visible graphical output.
 
@@ -309,7 +328,9 @@ Required for any visible graphical output.
 - [x] Implement bitmap and DIB support (`CreateBitmap`,
       `CreateDIBitmap`)
 
-### Phase F – Driver Completion
+### Phase F – Driver Completion **[PRESERVED – OUT OF SCOPE]**
+
+> Driver replacement is preserved for future work.
 
 - [x] Expand keyboard scan-code table to cover full 101/102-key layout
 - [x] Implement graphics-mode display driver (VGA 640×480×16,
@@ -366,29 +387,33 @@ Lower priority; required for full application compatibility.
 
 ## 5 – Priority Summary
 
-| Phase | Description                        | Priority | Effort   |
-|-------|------------------------------------|----------|----------|
-| A     | Critical KERNEL.EXE API expansion  | High     | Medium   |
-| B     | INI file and profile APIs          | High     | Low      |
-| C     | Extended memory APIs               | High     | Low      |
-| D     | USER.EXE expansion                 | High     | High     |
-| E     | GDI.EXE rendering                  | High     | High     |
-| F     | Driver completion                  | Medium   | Medium   |
-| G     | KERNEL resource stub wiring        | Medium   | Low      |
-| H     | Protected-mode (DPMI) support      | Medium   | Very High|
-| I     | Additional subsystems (OLE2, etc.) | Low      | Very High|
-| J     | Hardening and validation           | Medium   | Medium   |
+| Phase | Description                        | Priority | Effort   | Scope           |
+|-------|------------------------------------|----------|----------|-----------------|
+| A     | Critical KERNEL.EXE API expansion  | High     | Medium   | **In scope**    |
+| B     | INI file and profile APIs          | High     | Low      | **In scope**    |
+| C     | Extended memory APIs               | High     | Low      | **In scope**    |
+| D     | USER.EXE expansion                 | —        | —        | Preserved       |
+| E     | GDI.EXE rendering                  | —        | —        | Preserved       |
+| F     | Driver completion                  | —        | —        | Preserved       |
+| G     | KERNEL resource stub wiring        | Medium   | Low      | **In scope**    |
+| H     | Protected-mode (DPMI) support      | Medium   | Very High| **In scope**    |
+| I     | Additional subsystems (OLE2, etc.) | Low      | Very High| Preserved       |
+| J     | Hardening and validation           | Medium   | Medium   | **In scope**    |
 
 ---
 
 ## 6 – Conclusion
 
 WinDOS provides a solid NE executable loading and runtime foundation
-but is not yet a full Windows 3.1 kernel replacement.  Phases A through
-E above address the most impactful gaps and would bring the project to a
-state where common Windows 3.1 applications (Notepad, Calculator, Write)
-can run with visible output.  Phase H (DPMI) is the largest single work
-item and is required for Standard/Enhanced mode application support.
+but is not yet a full replacement for `krnl386.exe`.  Phases A through
+C and G–H above address the most impactful kernel-level gaps and would
+bring the project to a state where the replacement `krnl386.exe`
+correctly loads and manages NE modules, provides the critical KERNEL
+API surface, and supports protected-mode operation.
+
+Phases D (USER.EXE), E (GDI.EXE), and F (drivers) are preserved for
+future replacement work and are not part of the current `krnl386.exe`
+scope.
 
 This assessment and the roadmap above should be used to plan subsequent
 development milestones.

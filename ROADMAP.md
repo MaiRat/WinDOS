@@ -1,4 +1,9 @@
-# WinDOS – Remaining Roadmap for Windows 3.1 Kernel Replacement
+# WinDOS – Remaining Roadmap for krnl386.exe Replacement
+
+> **Scope reminder:** This roadmap is focused exclusively on replacing
+> `krnl386.exe`.  Phases that involve GDI, USER, or driver subsystems
+> are marked **[PRESERVED – OUT OF SCOPE]** and are kept for potential
+> future work.  No code has been removed.
 
 ## Current Status Assessment
 
@@ -49,7 +54,11 @@ Provide stub or minimal implementations of the most critical KERNEL.EXE exports 
 - [x] Register all implemented exports in the import/export resolution table so NE modules can resolve them at load time.
 - [x] Write tests verifying each stub returns expected values or behaves correctly for basic call sequences.
 
-## Phase 3 – USER and GDI Subsystem Interfaces
+## Phase 3 – USER and GDI Subsystem Interfaces **[PRESERVED – OUT OF SCOPE]**
+
+> These interfaces are preserved for future work.  Replacing USER.EXE
+> and GDI.EXE is not part of the current `krnl386.exe` replacement
+> effort.
 
 Provide the minimal interfaces required by KERNEL for the USER.EXE and GDI.EXE subsystems.
 
@@ -62,7 +71,10 @@ Provide the minimal interfaces required by KERNEL for the USER.EXE and GDI.EXE s
 - [x] Implement basic drawing stubs: `TextOut`, `MoveTo`, `LineTo`, `Rectangle`, `SetPixel`.
 - [x] Write integration tests that exercise the message loop and basic window lifecycle.
 
-## Phase 4 – Device Driver Integration
+## Phase 4 – Device Driver Integration **[PRESERVED – OUT OF SCOPE]**
+
+> Device driver replacement is preserved for future work.  Not part of
+> the current `krnl386.exe` replacement effort.
 
 Enable keyboard, timer, and display drivers under DOS.
 
@@ -111,15 +123,15 @@ Final validation, documentation, and release packaging.
 
 ## Summary
 
-| Phase | Description | Depends On |
-|-------|-------------|------------|
-| 1 | DOS 16-bit target bring-up | Steps 1–9 (done) |
-| 2 | KERNEL.EXE API stubs | Phase 1 |
-| 3 | USER/GDI subsystem interfaces | Phase 2 |
-| 4 | Device driver integration | Phase 1 |
-| 5 | Dynamic segment & resource management | Phase 2 |
-| 6 | Compatibility testing and hardening | Phases 2–5 |
-| 7 | Release readiness | Phase 6 |
+| Phase | Description                        | Priority | Effort   | Scope           |
+|-------|------------------------------------|----------|----------|-----------------|
+| 1     | DOS 16-bit target bring-up         | High     | Medium   | **In scope**    |
+| 2     | KERNEL.EXE API stubs               | High     | Medium   | **In scope**    |
+| 3     | USER/GDI subsystem interfaces      | —        | —        | Preserved       |
+| 4     | Device driver integration          | —        | —        | Preserved       |
+| 5     | Dynamic segment & resource mgmt    | High     | Medium   | **In scope**    |
+| 6     | Compatibility testing & hardening  | Medium   | Medium   | **In scope**    |
+| 7     | Release readiness                  | Medium   | Low      | **In scope**    |
 
 ---
 
@@ -130,7 +142,11 @@ Windows 3.1 kernel requirements has been completed.  The assessment
 identified significant gaps in API coverage, rendering, driver
 completeness, and protected-mode support.
 
-**WinDOS is not yet a full replacement for the Windows 3.1 Kernel.**
+**WinDOS is not yet a full replacement for `krnl386.exe`.**
+
+The current project scope is limited to replacing `krnl386.exe` only.
+GDI, USER, and driver subsystem code is preserved in-tree but is not
+being actively developed in this phase.
 
 For the detailed findings, gap catalog, and actionable final roadmap
 of missing steps, see **[KERNEL_ASSESSMENT.md](KERNEL_ASSESSMENT.md)**.
