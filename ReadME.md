@@ -11,14 +11,33 @@
 >
 > GDI, USER, and driver components are **not** being replaced or removed
 > at this time.  All existing code for those subsystems is preserved in
-> the tree for potential future work.
+> `archive/future/` for potential future work.
+
+### Directory Layout
+
+```
+WinDOS/
+├── src/              # Core kernel source modules (in scope)
+├── tests/            # Unit tests for in-scope modules
+├── archive/
+│   └── future/       # Preserved USER.EXE / GDI.EXE code (out of scope)
+│       ├── src/      # ne_user.c/.h, ne_gdi.c/.h
+│       └── tests/    # test_ne_user.c, test_ne_gdi.c
+├── Makefile          # Build system (krnl386 + test targets)
+├── NE_STUB.md        # NE-executable and DOS stub design document
+├── DEVELOPER.md      # Architecture and contributor guide
+├── INSTALL.md        # Installation and boot guide
+├── ROADMAP.md        # Extended roadmap and phase tracking
+└── KERNEL_ASSESSMENT.md  # Gap analysis and missing-step catalog
+```
 
 ### Module Classification
 
 | Scope | Modules | Notes |
 |-------|---------|-------|
-| **In scope** (krnl386 replacement) | `ne_parser`, `ne_loader`, `ne_reloc`, `ne_module`, `ne_impexp`, `ne_task`, `ne_mem`, `ne_trap`, `ne_kernel`, `ne_segmgr`, `ne_resource`, `ne_dpmi`, `ne_integrate`, `ne_fullinteg`, `ne_compat`, `ne_release` | Core kernel loading, runtime, and API surface |
-| **Preserved** (future phases) | `ne_user`, `ne_gdi`, `ne_driver` | USER.EXE, GDI.EXE, and device driver code — kept for later replacement work |
+| **In scope** (krnl386 replacement) | `ne_parser`, `ne_loader`, `ne_reloc`, `ne_module`, `ne_impexp`, `ne_task`, `ne_mem`, `ne_trap`, `ne_kernel`, `ne_segmgr`, `ne_resource`, `ne_dpmi`, `ne_integrate`, `ne_fullinteg`, `ne_compat`, `ne_release` | Core kernel loading, runtime, and API surface (in `src/`) |
+| **In scope** (kernel dependency) | `ne_driver` | Device driver module used by `ne_kernel` for `GetTickCount` and driver services (in `src/`) |
+| **Preserved** (future phases) | `ne_user`, `ne_gdi` | USER.EXE and GDI.EXE code — moved to `archive/future/` for later replacement work |
 
 ### Overview
 This roadmap breaks the work into small milestones to implement a replacement for `krnl386.exe` in WinDOS, starting from executable loading and ending with full subsystem integration.
@@ -40,6 +59,23 @@ Building a replacement `krnl386.exe` as an NE-executable requires:
 - **NE self-loading stub** — the linker must embed an MZ stub that loads the NE image; Watcom provides this by default for NE targets.
 - **Segment ordering control** — `wlink` `SEGMENT` directives to match the original segment layout (code, data, resident/discardable).
 - **Export definitions** — `wlink` `EXPORT` directives or a `.def` file listing all KERNEL ordinals to produce the correct export table.
+
+### Building krnl386.exe
+
+The Makefile includes a dedicated `krnl386` target that links all
+in-scope kernel modules into a single NE-format executable:
+
+```bash
+# Build the krnl386.exe NE-executable (requires Open Watcom):
+make krnl386
+
+# Build and run all kernel tests (host/CI):
+make host-test
+```
+
+The `krnl386` target uses `wlink format windows` to produce the NE
+binary.  See [NE_STUB.md](NE_STUB.md) for details on the DOS stub
+loader and NE header requirements.
 
 ### Step-by-step plan
 1. **NE-file parser**

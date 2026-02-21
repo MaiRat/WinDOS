@@ -57,12 +57,6 @@ FULLINTEG_OBJ  := $(BUILD_DIR)/ne_fullinteg.obj
 KERNEL_SRC     := $(SRC_DIR)/ne_kernel.c
 KERNEL_OBJ     := $(BUILD_DIR)/ne_kernel.obj
 
-USER_SRC       := $(SRC_DIR)/ne_user.c
-USER_OBJ       := $(BUILD_DIR)/ne_user.obj
-
-GDI_SRC        := $(SRC_DIR)/ne_gdi.c
-GDI_OBJ        := $(BUILD_DIR)/ne_gdi.obj
-
 DRIVER_SRC     := $(SRC_DIR)/ne_driver.c
 DRIVER_OBJ     := $(BUILD_DIR)/ne_driver.obj
 
@@ -121,14 +115,6 @@ KERNEL_TEST_SRC     := $(TEST_DIR)/test_ne_kernel.c
 KERNEL_TEST_OBJ     := $(BUILD_DIR)/test_ne_kernel.obj
 KERNEL_TEST_BIN     := $(BUILD_DIR)/test_ne_kernel.exe
 
-USER_TEST_SRC       := $(TEST_DIR)/test_ne_user.c
-USER_TEST_OBJ       := $(BUILD_DIR)/test_ne_user.obj
-USER_TEST_BIN       := $(BUILD_DIR)/test_ne_user.exe
-
-GDI_TEST_SRC        := $(TEST_DIR)/test_ne_gdi.c
-GDI_TEST_OBJ        := $(BUILD_DIR)/test_ne_gdi.obj
-GDI_TEST_BIN        := $(BUILD_DIR)/test_ne_gdi.exe
-
 DRIVER_TEST_SRC     := $(TEST_DIR)/test_ne_driver.c
 DRIVER_TEST_OBJ     := $(BUILD_DIR)/test_ne_driver.obj
 DRIVER_TEST_BIN     := $(BUILD_DIR)/test_ne_driver.exe
@@ -155,7 +141,31 @@ DPMI_TEST_BIN       := $(BUILD_DIR)/test_ne_dpmi.exe
 
 .PHONY: all test clean
 
-all: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN) $(INTEGRATE_TEST_BIN) $(FULLINTEG_TEST_BIN) $(KERNEL_TEST_BIN) $(USER_TEST_BIN) $(GDI_TEST_BIN) $(DRIVER_TEST_BIN) $(SEGMGR_TEST_BIN) $(RESOURCE_TEST_BIN) $(COMPAT_TEST_BIN) $(RELEASE_TEST_BIN) $(DPMI_TEST_BIN)
+all: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN) $(INTEGRATE_TEST_BIN) $(FULLINTEG_TEST_BIN) $(KERNEL_TEST_BIN) $(DRIVER_TEST_BIN) $(SEGMGR_TEST_BIN) $(RESOURCE_TEST_BIN) $(COMPAT_TEST_BIN) $(RELEASE_TEST_BIN) $(DPMI_TEST_BIN)
+
+# --------------------------------------------------------------------------
+# krnl386.exe – NE-executable build target
+#
+# Builds the krnl386.exe replacement as an NE-format Windows executable
+# with a self-loading DOS stub.  The linker uses "format windows" to
+# produce the NE binary and "option stub=..." to embed the MZ DOS stub.
+#
+# Prerequisites: Open Watcom v2.0+ with wcc and wlink on PATH.
+# --------------------------------------------------------------------------
+
+KRNL386_OBJS := $(PARSER_OBJ) $(LOADER_OBJ) $(RELOC_OBJ) $(MODULE_OBJ) \
+                $(IMPEXP_OBJ) $(TASK_OBJ) $(MEM_OBJ) $(TRAP_OBJ) \
+                $(INTEGRATE_OBJ) $(FULLINTEG_OBJ) $(KERNEL_OBJ) \
+                $(DRIVER_OBJ) $(SEGMGR_OBJ) $(RESOURCE_OBJ) \
+                $(COMPAT_OBJ) $(RELEASE_OBJ) $(DPMI_OBJ)
+
+KRNL386_BIN  := $(BUILD_DIR)/krnl386.exe
+
+.PHONY: krnl386
+krnl386: $(KRNL386_BIN)
+
+$(KRNL386_BIN): $(KRNL386_OBJS) | $(BUILD_DIR)
+	$(LD) format windows option quiet name $@ file {$(KRNL386_OBJS)}
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
@@ -191,12 +201,6 @@ $(FULLINTEG_OBJ): $(FULLINTEG_SRC) $(SRC_DIR)/ne_fullinteg.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
 $(KERNEL_OBJ): $(KERNEL_SRC) $(SRC_DIR)/ne_kernel.h | $(BUILD_DIR)
-	$(CC) $(CFLAGS) -fo=$@ $<
-
-$(USER_OBJ): $(USER_SRC) $(SRC_DIR)/ne_user.h | $(BUILD_DIR)
-	$(CC) $(CFLAGS) -fo=$@ $<
-
-$(GDI_OBJ): $(GDI_SRC) $(SRC_DIR)/ne_gdi.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
 $(DRIVER_OBJ): $(DRIVER_SRC) $(SRC_DIR)/ne_driver.h | $(BUILD_DIR)
@@ -247,12 +251,6 @@ $(FULLINTEG_TEST_OBJ): $(FULLINTEG_TEST_SRC) $(SRC_DIR)/ne_fullinteg.h | $(BUILD
 $(KERNEL_TEST_OBJ): $(KERNEL_TEST_SRC) $(SRC_DIR)/ne_kernel.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
-$(USER_TEST_OBJ): $(USER_TEST_SRC) $(SRC_DIR)/ne_user.h | $(BUILD_DIR)
-	$(CC) $(CFLAGS) -fo=$@ $<
-
-$(GDI_TEST_OBJ): $(GDI_TEST_SRC) $(SRC_DIR)/ne_gdi.h | $(BUILD_DIR)
-	$(CC) $(CFLAGS) -fo=$@ $<
-
 $(DRIVER_TEST_OBJ): $(DRIVER_TEST_SRC) $(SRC_DIR)/ne_driver.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
@@ -301,12 +299,6 @@ $(FULLINTEG_TEST_BIN): $(FULLINTEG_TEST_OBJ) $(FULLINTEG_OBJ) | $(BUILD_DIR)
 $(KERNEL_TEST_BIN): $(KERNEL_TEST_OBJ) $(KERNEL_OBJ) $(PARSER_OBJ) $(LOADER_OBJ) $(MODULE_OBJ) $(IMPEXP_OBJ) $(MEM_OBJ) $(TASK_OBJ) $(DRIVER_OBJ) $(RESOURCE_OBJ) | $(BUILD_DIR)
 	$(LD) $(LDFLAGS) name $@ file $(KERNEL_TEST_OBJ),$(KERNEL_OBJ),$(PARSER_OBJ),$(LOADER_OBJ),$(MODULE_OBJ),$(IMPEXP_OBJ),$(MEM_OBJ),$(TASK_OBJ),$(DRIVER_OBJ),$(RESOURCE_OBJ)
 
-$(USER_TEST_BIN): $(USER_TEST_OBJ) $(USER_OBJ) | $(BUILD_DIR)
-	$(LD) $(LDFLAGS) name $@ file $(USER_TEST_OBJ),$(USER_OBJ)
-
-$(GDI_TEST_BIN): $(GDI_TEST_OBJ) $(GDI_OBJ) | $(BUILD_DIR)
-	$(LD) $(LDFLAGS) name $@ file $(GDI_TEST_OBJ),$(GDI_OBJ)
-
 $(DRIVER_TEST_BIN): $(DRIVER_TEST_OBJ) $(DRIVER_OBJ) | $(BUILD_DIR)
 	$(LD) $(LDFLAGS) name $@ file $(DRIVER_TEST_OBJ),$(DRIVER_OBJ)
 
@@ -325,7 +317,7 @@ $(RELEASE_TEST_BIN): $(RELEASE_TEST_OBJ) $(RELEASE_OBJ) | $(BUILD_DIR)
 $(DPMI_TEST_BIN): $(DPMI_TEST_OBJ) $(DPMI_OBJ) | $(BUILD_DIR)
 	$(LD) $(LDFLAGS) name $@ file $(DPMI_TEST_OBJ),$(DPMI_OBJ)
 
-test: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN) $(INTEGRATE_TEST_BIN) $(FULLINTEG_TEST_BIN) $(KERNEL_TEST_BIN) $(USER_TEST_BIN) $(GDI_TEST_BIN) $(DRIVER_TEST_BIN) $(SEGMGR_TEST_BIN) $(RESOURCE_TEST_BIN) $(COMPAT_TEST_BIN) $(RELEASE_TEST_BIN) $(DPMI_TEST_BIN)
+test: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPEXP_TEST_BIN) $(TASK_TEST_BIN) $(TRAP_TEST_BIN) $(INTEGRATE_TEST_BIN) $(FULLINTEG_TEST_BIN) $(KERNEL_TEST_BIN) $(DRIVER_TEST_BIN) $(SEGMGR_TEST_BIN) $(RESOURCE_TEST_BIN) $(COMPAT_TEST_BIN) $(RELEASE_TEST_BIN) $(DPMI_TEST_BIN)
 	@echo "--- Running NE parser tests ---"
 	$(TEST_BIN)
 	@echo "--- Running NE loader tests ---"
@@ -346,10 +338,6 @@ test: $(TEST_BIN) $(LOADER_TEST_BIN) $(RELOC_TEST_BIN) $(MODULE_TEST_BIN) $(IMPE
 	$(FULLINTEG_TEST_BIN)
 	@echo "--- Running KERNEL.EXE API stub tests ---"
 	$(KERNEL_TEST_BIN)
-	@echo "--- Running USER.EXE subsystem tests ---"
-	$(USER_TEST_BIN)
-	@echo "--- Running GDI.EXE subsystem tests ---"
-	$(GDI_TEST_BIN)
 	@echo "--- Running Device Driver tests ---"
 	$(DRIVER_TEST_BIN)
 	@echo "--- Running Segment Manager tests (Phase 5) ---"
@@ -412,12 +400,6 @@ host-test: | $(BUILD_DIR)
 	@echo "--- KERNEL.EXE API stubs ---"
 	$(HOST_CC) $(HOST_CFLAGS) $(SRC_DIR)/ne_parser.c $(SRC_DIR)/ne_loader.c $(SRC_DIR)/ne_module.c $(SRC_DIR)/ne_impexp.c $(SRC_DIR)/ne_mem.c $(SRC_DIR)/ne_task.c $(SRC_DIR)/ne_kernel.c $(SRC_DIR)/ne_driver.c $(SRC_DIR)/ne_resource.c $(TEST_DIR)/test_ne_kernel.c -o $(BUILD_DIR)/host_test_kernel
 	$(BUILD_DIR)/host_test_kernel
-	@echo "--- USER.EXE subsystem ---"
-	$(HOST_CC) $(HOST_CFLAGS) $(SRC_DIR)/ne_user.c $(TEST_DIR)/test_ne_user.c -o $(BUILD_DIR)/host_test_user
-	$(BUILD_DIR)/host_test_user
-	@echo "--- GDI.EXE subsystem ---"
-	$(HOST_CC) $(HOST_CFLAGS) $(SRC_DIR)/ne_gdi.c $(TEST_DIR)/test_ne_gdi.c -o $(BUILD_DIR)/host_test_gdi
-	$(BUILD_DIR)/host_test_gdi
 	@echo "--- Device drivers ---"
 	$(HOST_CC) $(HOST_CFLAGS) $(SRC_DIR)/ne_driver.c $(TEST_DIR)/test_ne_driver.c -o $(BUILD_DIR)/host_test_driver
 	$(BUILD_DIR)/host_test_driver
